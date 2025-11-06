@@ -1,13 +1,24 @@
 import React, { useState } from "react";
 import AuthLayout from "../../component/AuthLayout";
+import ReCAPTCHA from "react-google-recaptcha";
+import toast from "react-hot-toast";
+import axios from "axios";
+import { baseUrl } from "../../utils/baseUrl";
+import {useNavigate} from 'react-router-dom'
 
 const Signup = () => {
+    const [loading, setLoading] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState("");
+    const navigate=useNavigate();
+
     const [form, setForm] = useState({
         businessName: "",
         ownerName: "",
         industry: "",
         contactNumber: "",
         gstPan: "",
+        city: "",
+        website: "",
         email: "",
         password: "",
     });
@@ -15,10 +26,43 @@ const Signup = () => {
     const handleChange = (e) =>
         setForm({ ...form, [e.target.name]: e.target.value });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Signup Data:", form);
-        // 🔹 TODO: Replace with your Axios POST to backend endpoint (e.g., /api/v1.0/auth/signup)
+
+        // ✅ Captcha validation
+        if (!captchaToken) {
+            return toast.error("Please verify you're not a robot");
+        }
+
+        try {
+            setLoading(true);
+
+            const res = await axios.post(`${baseUrl}/auth/signup`, {
+                businessName: form.businessName,
+                ownerName: form.ownerName,
+                industry: form.industry,
+                contactInfo: form.contactNumber,
+                gstOrPan: form.gstPan,
+                city: form.city,
+                website: form.website,
+                email: form.email,
+                password: form.password,
+                captchaToken,
+            });
+
+            toast.success(res.data.message || "Signup successful!");
+
+            localStorage.setItem("accessToken", res.data.token);
+            navigate("/login");
+
+        } catch (error) {
+            console.error("Signup Error:", error);
+            toast.error(
+                error.response?.data?.message || "Signup failed. Try again."
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -33,9 +77,7 @@ const Signup = () => {
             >
                 {/* Business Name */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">
-                        Business Name
-                    </label>
+                    <label className="block text-sm font-medium mb-1">Business Name</label>
                     <input
                         type="text"
                         name="businessName"
@@ -77,9 +119,7 @@ const Signup = () => {
 
                 {/* Contact Number */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">
-                        Contact Number
-                    </label>
+                    <label className="block text-sm font-medium mb-1">Contact Number</label>
                     <input
                         type="tel"
                         name="contactNumber"
@@ -94,9 +134,7 @@ const Signup = () => {
 
                 {/* GST / PAN */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">
-                        GST / PAN (optional)
-                    </label>
+                    <label className="block text-sm font-medium mb-1">GST / PAN (optional)</label>
                     <input
                         type="text"
                         name="gstPan"
@@ -104,6 +142,32 @@ const Signup = () => {
                         onChange={handleChange}
                         className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter GST or PAN number"
+                    />
+                </div>
+
+                {/* City */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">City</label>
+                    <input
+                        type="text"
+                        name="city"
+                        value={form.city}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter your city"
+                    />
+                </div>
+
+                {/* Website */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">Website</label>
+                    <input
+                        type="text"
+                        name="website"
+                        value={form.website}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://yourwebsite.com"
                     />
                 </div>
 
@@ -135,19 +199,25 @@ const Signup = () => {
                     />
                 </div>
 
+                {/* reCAPTCHA */}
+                <ReCAPTCHA
+                    sitekey="6LeQSwQsAAAAAPJZ5StQZ4m_jV21gWr9nD0aa_Hg"
+                    onChange={(token) => setCaptchaToken(token)}
+                />
+
                 {/* Submit */}
                 <button
                     type="submit"
-                    className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-all"
+                    disabled={loading}
+                    className={`w-full py-2 rounded-md text-white transition-all
+                        ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
                 >
-                    Sign Up
+                    {loading ? "Processing..." : "Sign Up"}
                 </button>
 
                 <p className="text-center text-sm mt-3">
                     Already have an account?{" "}
-                    <a href="/login" className="text-blue-600 hover:underline">
-                        Log in
-                    </a>
+                    <a href="/login" className="text-blue-600 hover:underline">Log in</a>
                 </p>
             </form>
         </AuthLayout>

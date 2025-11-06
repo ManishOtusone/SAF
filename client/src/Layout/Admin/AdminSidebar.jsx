@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, Home, LayoutDashboard, BookOpen, LogIn, LogOut } from "lucide-react";
+import { Menu, X, Home, LayoutDashboard, BookOpen, LogIn, LogOut, MessageSquare, Share } from "lucide-react";
 
 const AdminSidebar = () => {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const AdminSidebar = () => {
 
   return (
     <>
-        <button
+      <button
         className="md:hidden fixed top-4 left-4 z-50 text-green-800 bg-white border border-green-600 rounded-md p-2 shadow-md"
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -98,7 +98,30 @@ const AdminSidebar = () => {
             >
               <BookOpen className="w-5 h-5" />
               {isOpen && <span className="ml-3 font-medium">Learning Content Management
-</span>}
+              </span>}
+            </NavLink>
+            <NavLink
+              to="/admin/enquiry"
+              end
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <MessageSquare className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">Enquiry & Feedback</span>}
+            </NavLink>
+
+            <NavLink
+              to="/admin/allReferalls"
+              end
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <Share className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">All Referrals</span>}
             </NavLink>
           </nav>
         </div>

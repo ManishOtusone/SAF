@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema({
     contactInfo: { type: String, required: true, trim: true },
     gstOrPan: { type: String, trim: true },
 
+    city: { type: String, trim: true },
+    website: { type: String, trim: true },
+
     email: {
         type: String,
         required: true,

@@ -7,42 +7,60 @@ const MembershipPlans = () => {
   const [benefits, setBenefits] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+
+  const [userPlan, setUserPlan] = useState(null); // ✅ correct user plan
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
         const token = localStorage.getItem("accessToken");
 
+        // ✅ Fetch Membership Plans
         const plansRes = await axios.get(`${baseUrl}/user/getMembershipsPlans`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        // ✅ Fetch all memberships
         const membershipsRes = await axios.get(`${baseUrl}/user/allMemberships`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        // ✅ Fetch User Details
+        const userRes = await axios.get(
+          `${baseUrl}/user/getAllUserDetails`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
         if (plansRes.data.success) {
           const { plans, benefits } = plansRes.data.data;
+
           const planList = plans.map((p) => ({
-            label: p.name.toUpperCase(),
+            label: p.name.toUpperCase(), // STARTUP, GROWTHSTAGE, MATURESTAGE
             price: `${p.price}/year`,
           }));
+
           setPlans(planList);
-
-          const formattedBenefits = benefits.map((b) => [b.name, b.values]);
-          setBenefits(formattedBenefits);
+          setBenefits(benefits.map((b) => [b.name, b.values]));
         }
 
-        if (membershipsRes.data?.success && Array.isArray(membershipsRes.data.data)) {
-          setMemberships(membershipsRes.data.data);
-        } else if (Array.isArray(membershipsRes.data.memberships)) {
+        if (membershipsRes.data?.success) {
           setMemberships(membershipsRes.data.memberships);
-        } else {
-          setMemberships([]);
         }
+
+        // ✅ ✅ Correctly extract the user's current plan
+        // Your API returns:
+        //  user.membership.planName = "Startup"
+        const userDetails = userRes.data?.data;
+        const activePlan = userDetails?.membership?.planName || null;
+
+        console.log("✅ User Active Plan:", activePlan);
+
+        setUserPlan(activePlan);
+
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -53,6 +71,9 @@ const MembershipPlans = () => {
     fetchAllData();
   }, []);
 
+  const normalizePlan = (p) =>
+    p?.toLowerCase()?.replace("stage", "").replace(" ", "");
+
   const handleUpgradeClick = (planLabel) => {
     setSelectedPlan(planLabel);
     setShowPaymentModal(true);
@@ -61,7 +82,6 @@ const MembershipPlans = () => {
   const handlePayment = async () => {
     setIsPaying(true);
 
-    // Simulate payment processing delay
     setTimeout(async () => {
       alert("✅ Payment successful!");
       setIsPaying(false);
@@ -126,6 +146,7 @@ const MembershipPlans = () => {
             <tr>
               <th className="p-3 border border-gray-300 text-left w-12">SR. NO</th>
               <th className="p-3 border border-gray-300 text-left">Benefit / Service</th>
+
               {plans.map((plan, i) => (
                 <th key={i} className="p-3 border border-gray-300 text-center">
                   <div className="font-semibold">{plan.label}</div>
@@ -145,6 +166,7 @@ const MembershipPlans = () => {
                   {index + 1}
                 </td>
                 <td className="p-3 border border-gray-300">{benefit}</td>
+
                 {plans.map((_, i) => (
                   <td key={i} className="p-3 border border-gray-300 text-center">
                     {values[i] || "-"}
@@ -155,28 +177,37 @@ const MembershipPlans = () => {
 
             <tr className="bg-yellow-600">
               <td className="p-4 border border-gray-300" colSpan="2"></td>
-              {plans.map((plan, i) => (
-                <td key={i} className="p-4 border border-gray-300 text-center">
-                  <button
-                    onClick={() => handleUpgradeClick(plan.label)}
-                    className="bg-white text-yellow-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-100 transition font-semibold w-full"
-                  >
-                    Upgrade
-                  </button>
-                </td>
-              ))}
+
+              {plans.map((plan, i) => {
+                const uiPlan = normalizePlan(plan.label);
+                const active = normalizePlan(userPlan);
+
+                return (
+                  <td key={i} className="p-4 border border-gray-300 text-center">
+                    {uiPlan === active ? (
+                      <span className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg font-semibold w-full block">
+                        Current Plan
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleUpgradeClick(plan.label)}
+                        className="bg-white text-yellow-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-100 transition font-semibold w-full"
+                      >
+                        Upgrade
+                      </button>
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Dummy Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-center">
-            <h2 className="text-xl font-bold mb-3 text-gray-800">
-              Confirm Payment
-            </h2>
+            <h2 className="text-xl font-bold mb-3 text-gray-800">Confirm Payment</h2>
             <p className="text-gray-600 mb-5">
               You are about to purchase <strong>{selectedPlan}</strong> plan.
             </p>
@@ -185,9 +216,7 @@ const MembershipPlans = () => {
               onClick={handlePayment}
               disabled={isPaying}
               className={`w-full py-2 rounded-lg text-white font-semibold ${
-                isPaying
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-yellow-600 hover:bg-yellow-700"
+                isPaying ? "bg-gray-400 cursor-not-allowed" : "bg-yellow-600 hover:bg-yellow-700"
               }`}
             >
               {isPaying ? "Processing..." : "Pay Now"}
@@ -208,3 +237,4 @@ const MembershipPlans = () => {
 };
 
 export default MembershipPlans;
+

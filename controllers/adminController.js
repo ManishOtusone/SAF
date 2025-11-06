@@ -4,6 +4,9 @@ const MembershipBenefit = require("../models/membershipBenefitSchema");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
+const Enquiry = require("../models/enquirySchema");
+const Referral = require("../models/referralSchema");
+
 
 // Create new service
 exports.createService = async (req, res) => {
@@ -382,5 +385,82 @@ exports.uploadServiceContent = async (req, res) => {
         });
     }
 };
+
+exports.getAllEnquiries = async (req, res) => {
+    try {
+        const list = await Enquiry.find().populate("userId", "email");
+        res.status(200).json({ success: true, enquiries: list });
+    } catch (error) {
+        console.log("Get All Error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+exports.deleteEnquiry = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deleted = await Enquiry.findByIdAndDelete(id);
+
+        if (!deleted)
+            return res.status(404).json({ success: false, message: "Enquiry not found" });
+
+        res.status(200).json({
+            success: true,
+            message: "Enquiry deleted successfully"
+        });
+    } catch (error) {
+        console.log("Delete Error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+
+exports.getAllReferrals = async (req, res) => {
+    try {
+        const referrals = await Referral.find()
+            .populate("userId", "ownerName email")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            referrals
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.updateReferralStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body; // "Approved" / "Rejected"
+
+        if (!["Approved", "Rejected", "Pending"].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid status"
+            });
+        }
+
+        const referral = await Referral.findByIdAndUpdate(
+            id,
+            { status },
+            { new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Status updated successfully",
+            referral
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
 
 

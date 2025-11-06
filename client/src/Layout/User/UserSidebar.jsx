@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, CreditCard, LayoutDashboard, BookOpen, LogIn, LogOut } from "lucide-react";
+import { Menu, X, CreditCard, LayoutDashboard, BookOpen, LogIn, LogOut, MessageSquare ,Share} from "lucide-react";
 
 const UserSidebar = () => {
   const navigate = useNavigate();
@@ -46,6 +46,7 @@ const UserSidebar = () => {
       >
         {/* Top Section */}
         <div className="flex flex-col items-center py-6">
+
           {/* Logo */}
           <div
             className="flex items-center space-x-2 mb-8 cursor-pointer"
@@ -65,15 +66,14 @@ const UserSidebar = () => {
 
           {/* Navigation Links */}
           <nav className="flex flex-col w-full space-y-1">
-            {/* 🏠 Home */}
 
-
-            {/* 📊 Dashboard */}
+            {/* ✅ Dashboard */}
             <NavLink
               to="/user/"
+              end
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
               <LayoutDashboard className="w-5 h-5" />
@@ -85,23 +85,51 @@ const UserSidebar = () => {
               to="/user/studyMaterial"
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
               <BookOpen className="w-5 h-5" />
               {isOpen && <span className="ml-3 font-medium">Study Material</span>}
             </NavLink>
+
+            {/* 💳 Plan Page */}
             <NavLink
               to="/user/plans"
               end
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
               <CreditCard className="w-5 h-5" />
               {isOpen && <span className="ml-3 font-medium">Plan Page</span>}
             </NavLink>
+
+            {/* 📩 Enquiry & Feedback */}
+            <NavLink
+              to="/user/enquiry"
+              end
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <MessageSquare className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">Enquiry & Feedback</span>}
+            </NavLink>
+
+            <NavLink
+              to="/user/referalls"
+              end
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <Share className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">Referrals</span>}
+            </NavLink>
+
           </nav>
         </div>
 
@@ -132,7 +160,7 @@ const UserSidebar = () => {
         className={`transition-all duration-300 ${isOpen ? "md:ml-64 ml-20" : "ml-20"
           }`}
       >
-        {/* Place your page content here */}
+        {/* Page content goes here */}
       </div>
     </>
   );

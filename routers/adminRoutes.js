@@ -11,7 +11,11 @@ const {
     getAllUsers,
     getMembershipData,
     saveMembershipData,
-    uploadServiceContent
+    uploadServiceContent,
+    getAllEnquiries,
+    deleteEnquiry,
+    getAllReferrals,
+    updateReferralStatus
 } = require("../controllers/adminController");
 const { protect, authorizeRoles } = require("../middlewares/authMiddleware");
 
@@ -33,6 +37,11 @@ router.get("/users", protect, authorizeRoles("admin"), getAllUsers);
 router.post("/upload-service-content", protect, authorizeRoles("admin"), upload.array("files"), uploadServiceContent);
 
 router.post("/edit-membership", protect, authorizeRoles("admin"), saveMembershipData);
+router.get("/all", protect, authorizeRoles("admin"), getAllEnquiries);
+router.delete("/delete/:id", protect, authorizeRoles("admin"), deleteEnquiry);
+
+router.get("/allRefral", protect, authorizeRoles("admin"), getAllReferrals);
+router.put("/update-status/:id", protect, authorizeRoles("admin"), updateReferralStatus);
 
 module.exports = router;
 

@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const Service = require("../models/Service");
 const Membership = require("../models/Membership");
+const Referral = require("../models/referralSchema");
+
 
 
 
@@ -262,4 +264,119 @@ exports.assignMembership = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+
+exports.getFullUserDetails = async (req, res) => {
+    try {
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: Invalid token",
+            });
+        }
+
+        const user = await User.findById(req.user._id)
+            .select("-password")
+            .populate("membership")
+            .populate("servicesProgress.serviceId");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "User details fetched successfully",
+            data: user,
+        });
+    } catch (error) {
+        console.error("getFullUserDetails error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+const Enquiry = require("../models/enquirySchema");
+
+exports.createEnquiry = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const { name, phone, description } = req.body;
+
+        if (!name || !phone || !description)
+            return res.status(400).json({ success: false, message: "All fields are required" });
+
+        const enquiry = await Enquiry.create({
+            userId,
+            name,
+            phone,
+            description
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Enquiry submitted successfully",
+            enquiry
+        });
+    } catch (error) {
+        console.log("Create Enquiry Error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+// controllers/referralController.js
+
+exports.createReferral = async (req, res) => {
+    try {
+        const { name, contactNumber, companyName, email } = req.body;
+
+        if (!name || !contactNumber || !companyName || !email) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
+
+        const referral = await Referral.create({
+            name,
+            contactNumber,
+            companyName,
+            email,
+            userId: req.user._id
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Referral submitted successfully",
+            referral
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getMyReferrals = async (req, res) => {
+    try {
+        const referrals = await Referral.find({ userId: req.user._id }).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            referrals
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+
+
 

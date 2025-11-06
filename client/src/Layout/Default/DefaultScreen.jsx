@@ -18,24 +18,33 @@ const DefaultScreen = () => {
             try {
                 const token = localStorage.getItem("accessToken");
 
-                const plansRes = await axios.get(`${baseUrl}/user/getDefaultMembershipsPlans`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const plansRes = await axios.get(
+                    `${baseUrl}/user/getDefaultMembershipsPlans`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
 
                 if (plansRes.data.success) {
                     const { plans, benefits } = plansRes.data.data;
-                    const planList = plans.map((p) => ({
-                        label: p.name.toUpperCase(),
-                        price: `${p.price}/year`,
-                    }));
+
+                    // ✅ ADD STATIC FREE PLAN
+                    const planList = [
+                        { label: "FREE", price: "Free" },
+                        ...plans.map((p) => ({
+                            label: p.name.toUpperCase(),
+                            price: `${p.price}/year`,
+                        })),
+                    ];
                     setPlans(planList);
 
-                    const formattedBenefits = benefits.map((b) => [b.name, b.values]);
+                    // ✅ ADD STATIC ✖ COLUMN FOR FREE PLAN AT INDEX 0
+                    const formattedBenefits = benefits.map((b) => [
+                        b.name,
+                        ["❌", ...b.values],
+                    ]);
                     setBenefits(formattedBenefits);
                 }
 
-                // Temporarily disable memberships API since it's commented out
-                setMemberships([]); 
+                setMemberships([]); // not used here
             } catch (err) {
                 console.error("Error fetching data:", err);
             } finally {
@@ -49,7 +58,6 @@ const DefaultScreen = () => {
     const handleUpgradeClick = (planLabel) => {
         const token = localStorage.getItem("accessToken");
 
-        // ✅ Redirect to login if user not logged in
         if (!token) {
             alert("Please log in to upgrade your membership.");
             navigate("/login");
@@ -63,7 +71,6 @@ const DefaultScreen = () => {
     const handlePayment = async () => {
         setIsPaying(true);
 
-        // Simulate payment processing delay
         setTimeout(async () => {
             alert("✅ Payment successful!");
             setIsPaying(false);
@@ -76,7 +83,7 @@ const DefaultScreen = () => {
     const assignMembership = async (planLabel) => {
         try {
             if (!memberships || memberships.length === 0) {
-                alert("No membership data loaded yet. Please refresh the page.");
+                alert("No membership data available. Please refresh the page.");
                 return;
             }
 
@@ -126,8 +133,13 @@ const DefaultScreen = () => {
                 <table className="w-full border border-gray-300 text-sm sm:text-base">
                     <thead className="bg-yellow-600 text-white">
                         <tr>
-                            <th className="p-3 border border-gray-300 text-left w-12">SR. NO</th>
-                            <th className="p-3 border border-gray-300 text-left">Benefit / Service</th>
+                            <th className="p-3 border border-gray-300 text-left w-12">
+                                SR. NO
+                            </th>
+                            <th className="p-3 border border-gray-300 text-left">
+                                Benefit / Service
+                            </th>
+
                             {plans.map((plan, i) => (
                                 <th key={i} className="p-3 border border-gray-300 text-center">
                                     <div className="font-semibold">{plan.label}</div>
@@ -141,29 +153,46 @@ const DefaultScreen = () => {
                         {benefits.map(([benefit, values], index) => (
                             <tr
                                 key={index}
-                                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-100"} hover:bg-yellow-50`}
+                                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-100"
+                                    } hover:bg-yellow-50`}
                             >
                                 <td className="p-3 border border-gray-300 text-center font-medium">
                                     {index + 1}
                                 </td>
                                 <td className="p-3 border border-gray-300">{benefit}</td>
-                                {plans.map((_, i) => (
-                                    <td key={i} className="p-3 border border-gray-300 text-center">
-                                        {values[i] || "-"}
+
+                                {values.map((v, i) => (
+                                    <td
+                                        key={i}
+                                        className={`p-3 border border-gray-300 text-center ${v === "✖" ? "text-red-600 font-bold" : ""
+                                            }`}
+                                    >
+                                        {v || "-"}
                                     </td>
                                 ))}
+
                             </tr>
                         ))}
 
                         <tr className="bg-yellow-600">
                             <td className="p-4 border border-gray-300" colSpan="2"></td>
+
                             {plans.map((plan, i) => (
                                 <td key={i} className="p-4 border border-gray-300 text-center">
                                     <button
-                                        onClick={() => handleUpgradeClick(plan.label)}
-                                        className="bg-white text-yellow-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-100 transition font-semibold w-full"
+                                        onClick={() =>
+                                            plan.label !== "FREE" &&
+                                            handleUpgradeClick(plan.label)
+                                        }
+                                        disabled={plan.label === "FREE"}
+                                        className={`bg-white text-yellow-600 text-sm px-4 py-2 rounded-lg transition font-semibold w-full
+                                            ${plan.label === "FREE"
+                                                ? "opacity-40 cursor-not-allowed"
+                                                : "hover:bg-gray-100"
+                                            }
+                                        `}
                                     >
-                                        Upgrade
+                                        {plan.label === "FREE" ? "Default" : "Upgrade"}
                                     </button>
                                 </td>
                             ))}
@@ -172,7 +201,6 @@ const DefaultScreen = () => {
                 </table>
             </div>
 
-            {/* Payment Modal */}
             {showPaymentModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-center">
@@ -186,11 +214,10 @@ const DefaultScreen = () => {
                         <button
                             onClick={handlePayment}
                             disabled={isPaying}
-                            className={`w-full py-2 rounded-lg text-white font-semibold ${
-                                isPaying
+                            className={`w-full py-2 rounded-lg text-white font-semibold ${isPaying
                                     ? "bg-gray-400 cursor-not-allowed"
                                     : "bg-yellow-600 hover:bg-yellow-700"
-                            }`}
+                                }`}
                         >
                             {isPaying ? "Processing..." : "Pay Now"}
                         </button>
