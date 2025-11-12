@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, CreditCard, LayoutDashboard, BookOpen, LogIn, LogOut, MessageSquare ,Share} from "lucide-react";
+import { Menu, X, CreditCard, LayoutDashboard, BookOpen, LogIn, LogOut, MessageSquare, Share, Book, BookA } from "lucide-react";
 
 const UserSidebar = () => {
   const navigate = useNavigate();
@@ -103,6 +103,17 @@ const UserSidebar = () => {
             >
               <CreditCard className="w-5 h-5" />
               {isOpen && <span className="ml-3 font-medium">Plan Page</span>}
+            </NavLink>
+            <NavLink
+              to="/user/content"
+              end
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <Book className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">Request For Contents</span>}
             </NavLink>
 
             {/* 📩 Enquiry & Feedback */}

@@ -6,6 +6,7 @@ const cloudinary = require("../config/cloudinary");
 const fs = require("fs");
 const Enquiry = require("../models/enquirySchema");
 const Referral = require("../models/referralSchema");
+const path = require("path");
 
 
 // Create new service
@@ -200,26 +201,64 @@ exports.getMembershipData = async (req, res) => {
     }
 };
 
+
+
+
+// ✅ Save or update Membership Data (with links only)
 exports.saveMembershipData = async (req, res) => {
     try {
+        console.log("🧾 Body received:", req.body);
+
         const { plans, benefits } = req.body;
 
-        let data = await MembershipBenefit.findOne();
-        if (!data) {
-            data = new MembershipBenefit({ plans, benefits });
-        } else {
-            data.plans = plans;
-            data.benefits = benefits;
-            data.updatedAt = new Date();
+        // ✅ Parse JSON safely
+        let parsedPlans, parsedBenefits;
+        try {
+            parsedPlans = typeof plans === "string" ? JSON.parse(plans) : plans;
+            parsedBenefits = typeof benefits === "string" ? JSON.parse(benefits) : benefits;
+        } catch (parseError) {
+            console.error("❌ Error parsing JSON data:", parseError);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid plans or benefits format",
+            });
         }
 
-        await data.save();
-        res.json({ success: true, message: "Membership data saved successfully", data });
+        // ✅ Replace pdfUrl → link for safety if frontend still sends pdfUrl
+        parsedBenefits = parsedBenefits.map((benefit) => ({
+            ...benefit,
+            link: benefit.link || benefit.pdfUrl || "",
+        }));
+
+        // ✅ Save or update membership data in MongoDB
+        let existingData = await MembershipBenefit.findOne();
+
+        if (!existingData) {
+            existingData = new MembershipBenefit({
+                plans: parsedPlans,
+                benefits: parsedBenefits,
+            });
+        } else {
+            existingData.plans = parsedPlans;
+            existingData.benefits = parsedBenefits;
+            existingData.updatedAt = new Date();
+        }
+
+        await existingData.save();
+
+        res.json({
+            success: true,
+            message: "✅ Membership data (with links) updated successfully",
+            data: existingData,
+        });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error("💥 Error in saveMembershipData:", err);
+        res.status(500).json({
+            success: false,
+            message: err.message,
+        });
     }
 };
-
 
 // exports.uploadServiceContent = async (req, res) => {
 //     try {
@@ -285,106 +324,127 @@ exports.saveMembershipData = async (req, res) => {
 //     }
 // };
 
+
+
 exports.uploadServiceContent = async (req, res) => {
     try {
-        const { serviceName, access } = req.body;
+        const { serviceName, access, userId } = req.body;
         const files = req.files;
 
-        // Validate inputs
-        if (!serviceName || !files || files.length === 0) {
+        // ✅ Validation
+        if (!serviceName || !files || files.length === 0 || !userId) {
             return res.status(400).json({
                 success: false,
-                message: "Service name and files are required"
+                message: "Service name, files, and user are required",
             });
         }
 
-        // Parse the access JSON string
+        // ✅ Parse access control
         let accessControl;
         try {
-            accessControl = typeof access === 'string' ? JSON.parse(access) : access;
-        } catch (parseError) {
-            console.error("Error parsing access control:", parseError);
+            accessControl = typeof access === "string" ? JSON.parse(access) : access;
+        } catch {
             return res.status(400).json({
                 success: false,
-                message: "Invalid access control format"
+                message: "Invalid access control format",
             });
         }
 
-        console.log("Parsed access control:", accessControl);
-
-        // Find or create the service
+        // ✅ Find or create Service
         let service = await Service.findOne({ name: serviceName });
         if (!service) {
             service = new Service({
                 name: serviceName,
                 description: "",
-                planContents: {
-                    Startup: [],
-                    GrowthStage: [],
-                    MatureStage: []
-                },
+                planContents: { Startup: [], GrowthStage: [], MatureStage: [] },
             });
         }
 
-        // Upload files to Cloudinary and assign to plans
+        const uploadedFiles = [];
+
+        // ✅ Loop through all uploaded files
         for (const file of files) {
+            // Automatically detect type (PDF, image, or video)
+            const resourceType = file.mimetype.includes("video") ? "video" : "auto";
+
             const uploaded = await cloudinary.uploader.upload(file.path, {
-                resource_type: "auto",
+                resource_type: resourceType,
                 folder: "service_contents",
             });
 
-            const fileType = file.mimetype.includes("video") ? "video" : "pdf";
+            // Convert /raw/upload/ → /upload/ (fix PDF preview issue)
+            const viewableUrl = uploaded.secure_url.replace(
+                "/raw/upload/",
+                "/upload/"
+            );
+
             const fileData = {
                 title: file.originalname,
-                type: fileType,
-                url: uploaded.secure_url,
+                type: file.mimetype.includes("video") ? "video" : "pdf",
+                url: viewableUrl,
                 publicId: uploaded.public_id,
-                uploadedAt: new Date()
+                uploadedAt: new Date(),
             };
 
-            console.log("Adding file to plans:", fileData.title);
-            console.log("Access control - startup:", accessControl.startup);
-            console.log("Access control - growth:", accessControl.growth);
-            console.log("Access control - matured:", accessControl.matured);
+            uploadedFiles.push(fileData);
 
-            // Add to correct membership plans based on access control
-            if (accessControl.startup === true) {
-                service.planContents.Startup.push(fileData);
-                console.log("✓ Added to Startup plan");
-            }
-            if (accessControl.growth === true) {
-                service.planContents.GrowthStage.push(fileData);
-                console.log("✓ Added to GrowthStage plan");
-            }
-            if (accessControl.matured === true) {
-                service.planContents.MatureStage.push(fileData);
-                console.log("✓ Added to MatureStage plan");
-            }
+            // ✅ Assign file to the correct membership plan(s)
+            if (accessControl.startup) service.planContents.Startup.push(fileData);
+            if (accessControl.growth) service.planContents.GrowthStage.push(fileData);
+            if (accessControl.matured) service.planContents.MatureStage.push(fileData);
 
-            // Delete temp file
-            try {
-                fs.unlinkSync(file.path);
-            } catch (unlinkError) {
-                console.warn("Could not delete temp file:", unlinkError);
-            }
+            // ✅ Delete local temp file
+            fs.unlinkSync(file.path);
         }
 
+        // ✅ Save updated service
         await service.save();
 
+        // ✅ Update user's service progress
+        const user = await User.findById(userId);
+        if (user) {
+            const existingProgress = user.servicesProgress.find(
+                (p) => p.serviceId?.toString() === service._id.toString()
+            );
+
+            if (existingProgress) {
+                existingProgress.totalContents += uploadedFiles.length;
+                existingProgress.progressPercent =
+                    existingProgress.totalContents === 0
+                        ? 0
+                        : (existingProgress.completedContents.length /
+                            existingProgress.totalContents) *
+                        100;
+            } else {
+                user.servicesProgress.push({
+                    serviceId: service._id,
+                    completedContents: [],
+                    totalContents: uploadedFiles.length,
+                    progressPercent: 0,
+                });
+            }
+
+            await user.save();
+        }
+
+        // ✅ Success response
         res.json({
             success: true,
-            message: "Service content uploaded successfully",
+            message: "✅ Service content uploaded successfully!",
+            uploadedFiles,
             service,
         });
     } catch (error) {
-        console.error("Error uploading content:", error);
+        console.error("❌ Error uploading content:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",
-            error: error.message
+            error: error.message,
         });
     }
 };
+
+
 
 exports.getAllEnquiries = async (req, res) => {
     try {

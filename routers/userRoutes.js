@@ -2,6 +2,7 @@ const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
 const { getDashboard, getStudyMaterialsForUser, updateContentProgress, assignMembership, getFullUserDetails, createEnquiry, createReferral, getMyReferrals } = require("../controllers/userController");
 const { getMembershipData, getAllMemberships } = require("../controllers/adminController");
+const { createRequestContent } = require("../controllers/contentRequest");
 
 const router = express.Router();
 
@@ -17,6 +18,8 @@ router.get("/getAllUserDetails", protect, getFullUserDetails);
 router.post("/createEnquiry", protect, createEnquiry);
 router.post("/create", protect, createReferral);
 router.get("/my-referrals", protect, getMyReferrals);
+router.post("/create-content-request", protect, createRequestContent)
+
 
 
 

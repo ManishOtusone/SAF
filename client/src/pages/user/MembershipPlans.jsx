@@ -12,55 +12,56 @@ const MembershipPlans = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
 
-  const [userPlan, setUserPlan] = useState(null); // ✅ correct user plan
+  const [userPlan, setUserPlan] = useState(null);
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
         const token = localStorage.getItem("accessToken");
 
-        // ✅ Fetch Membership Plans
+        // Fetch plans + benefits
         const plansRes = await axios.get(`${baseUrl}/user/getMembershipsPlans`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // ✅ Fetch all memberships
+        // Fetch membership IDs
         const membershipsRes = await axios.get(`${baseUrl}/user/allMemberships`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // ✅ Fetch User Details
-        const userRes = await axios.get(
-          `${baseUrl}/user/getAllUserDetails`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        // Fetch user active plan
+        const userRes = await axios.get(`${baseUrl}/user/getAllUserDetails`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         if (plansRes.data.success) {
           const { plans, benefits } = plansRes.data.data;
 
-          const planList = plans.map((p) => ({
-            label: p.name.toUpperCase(), // STARTUP, GROWTHSTAGE, MATURESTAGE
-            price: `${p.price}/year`,
-          }));
+          // ✅ Set plans
+          setPlans(
+            plans.map((p) => ({
+              label: p.name.toUpperCase(),
+              price: `${p.price}/year`,
+            }))
+          );
 
-          setPlans(planList);
-          setBenefits(benefits.map((b) => [b.name, b.values]));
+          // ✅ Use link instead of pdfUrl
+          setBenefits(
+            benefits.map((b) => ({
+              name: b.name,
+              values: b.values,
+              link: b.link || "",
+            }))
+          );
         }
 
         if (membershipsRes.data?.success) {
           setMemberships(membershipsRes.data.memberships);
         }
 
-        // ✅ ✅ Correctly extract the user's current plan
-        // Your API returns:
-        //  user.membership.planName = "Startup"
         const userDetails = userRes.data?.data;
         const activePlan = userDetails?.membership?.planName || null;
-
-        console.log("✅ User Active Plan:", activePlan);
-
         setUserPlan(activePlan);
-
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -93,11 +94,6 @@ const MembershipPlans = () => {
 
   const assignMembership = async (planLabel) => {
     try {
-      if (!memberships || memberships.length === 0) {
-        alert("No membership data loaded yet. Please refresh the page.");
-        return;
-      }
-
       const token = localStorage.getItem("accessToken");
 
       let planName = "";
@@ -146,6 +142,7 @@ const MembershipPlans = () => {
             <tr>
               <th className="p-3 border border-gray-300 text-left w-12">SR. NO</th>
               <th className="p-3 border border-gray-300 text-left">Benefit / Service</th>
+              <th className="p-3 border border-gray-300 text-center">Link</th>
 
               {plans.map((plan, i) => (
                 <th key={i} className="p-3 border border-gray-300 text-center">
@@ -157,7 +154,7 @@ const MembershipPlans = () => {
           </thead>
 
           <tbody>
-            {benefits.map(([benefit, values], index) => (
+            {benefits.map((benefit, index) => (
               <tr
                 key={index}
                 className={`${index % 2 === 0 ? "bg-white" : "bg-gray-100"} hover:bg-yellow-50`}
@@ -165,18 +162,38 @@ const MembershipPlans = () => {
                 <td className="p-3 border border-gray-300 text-center font-medium">
                   {index + 1}
                 </td>
-                <td className="p-3 border border-gray-300">{benefit}</td>
 
+                {/* Benefit Name */}
+                <td className="p-3 border border-gray-300">{benefit.name}</td>
+
+                {/* ✅ Link Column */}
+                <td className="p-3 border border-gray-300 text-center">
+                  {benefit.link && benefit.link.trim() !== "" ? (
+                    <a
+                      href={benefit.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline text-sm hover:text-blue-800"
+                    >
+                      View Link
+                    </a>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+
+                {/* Plan Values */}
                 {plans.map((_, i) => (
                   <td key={i} className="p-3 border border-gray-300 text-center">
-                    {values[i] || "-"}
+                    {benefit.values[i] || "-"}
                   </td>
                 ))}
               </tr>
             ))}
 
+            {/* Upgrade / Current Plan Row */}
             <tr className="bg-yellow-600">
-              <td className="p-4 border border-gray-300" colSpan="2"></td>
+              <td className="p-4 border border-gray-300" colSpan="3"></td>
 
               {plans.map((plan, i) => {
                 const uiPlan = normalizePlan(plan.label);
@@ -204,6 +221,7 @@ const MembershipPlans = () => {
         </table>
       </div>
 
+      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-center">
@@ -216,7 +234,9 @@ const MembershipPlans = () => {
               onClick={handlePayment}
               disabled={isPaying}
               className={`w-full py-2 rounded-lg text-white font-semibold ${
-                isPaying ? "bg-gray-400 cursor-not-allowed" : "bg-yellow-600 hover:bg-yellow-700"
+                isPaying
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-yellow-600 hover:bg-yellow-700"
               }`}
             >
               {isPaying ? "Processing..." : "Pay Now"}
@@ -237,4 +257,3 @@ const MembershipPlans = () => {
 };
 
 export default MembershipPlans;
-

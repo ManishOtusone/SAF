@@ -17,6 +17,8 @@ import AdminEnquiry from "./pages/admin/Enquiry";
 import { Toaster } from "react-hot-toast";
 import AllReferalls from "./pages/admin/AllReferalls";
 import Referalls from "./pages/user/Referalls";
+import Contents from "./pages/user/Contents";
+import RequestedContents from "./pages/admin/RequestedContents";
 
 function App() {
   function PrivateRoute({ children, roleRequired }) {
@@ -76,7 +78,7 @@ function App() {
             <Route path="contentManagement" element={<ContentManagement />} />
             <Route path="enquiry" element={<AdminEnquiry />} />
             <Route path="allReferalls" element={<AllReferalls />} />
-
+            <Route path="content-request" element={<RequestedContents />} />
             
 
 
@@ -95,6 +97,8 @@ function App() {
             <Route path="studyMaterial/:id" element={<StudyMaterialDetail />} />
             <Route path="enquiry" element={<Enquiry />} />
             <Route path="referalls" element={<Referalls />} />
+            <Route path="content" element={<Contents />} />
+
 
 
 

@@ -4,156 +4,137 @@ const Membership = require("../models/Membership");
 const Referral = require("../models/referralSchema");
 
 
-
-
 // In your dashboard controller
-exports.getDashboard = async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id)
-            .populate({
-                path: "membership",
-                populate: { path: "allowedServices", model: "Service" },
-            });
+// controllers/userController.js
+// Update this in your userController.js
 
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-
-        if (!user.membership) {
-            return res.status(400).json({
-                success: false,
-                message: "No membership assigned to this user yet.",
-            });
-        }
-
-        const planName = user.membership.planName;
-        const allowedServices = user.membership.allowedServices || [];
-
-        const formattedServices = allowedServices.map((service) => {
-            // Calculate total contents from service's planContents
-            const totalContents = service.planContents?.[planName]?.length || 0;
-
-            return {
-                _id: service._id,
-                name: service.name,
-                description: service.description,
-                count: totalContents, // This should match totalContents in progress
-                contents: service.planContents?.[planName] || [],
-            };
-        });
-
-        // Format progress data - ensure totalContents matches service content count
-        const formattedProgress = user.servicesProgress.map(prog => {
-            // Find the corresponding service to get accurate total content count
-            const service = allowedServices.find(s =>
-                s._id.toString() === prog.serviceId.toString()
-            );
-
-            const accurateTotalContents = service?.planContents?.[planName]?.length || 0;
-
-            // Calculate completed count
-            let completedCount;
-            if (Array.isArray(prog.completedContents)) {
-                completedCount = prog.completedContents.length;
-            } else {
-                completedCount = typeof prog.completedContents === 'number' ? prog.completedContents : 0;
-            }
-
-            // If totalContents in progress is wrong, fix it
-            if (prog.totalContents !== accurateTotalContents) {
-                console.log(`Fixing totalContents for service ${prog.serviceId}: ${prog.totalContents} -> ${accurateTotalContents}`);
-            }
-
-            return {
-                serviceId: prog.serviceId.toString(),
-                completed: completedCount,
-                total: accurateTotalContents, // Use the accurate count from service
-                progressPercent: accurateTotalContents > 0 ?
-                    Math.min((completedCount / accurateTotalContents) * 100, 100) : 0
-            };
-        });
-
-        // ✅ Include validTill from user document
-        res.json({
-            success: true,
-            membership: {
-                planName: user.membership.planName,
-                price: user.membership.price,
-                validityDays: user.membership.validityDays,
-                validTill: user.validTill,
-            },
-            services: formattedServices,
-            progress: formattedProgress,
-        });
-    } catch (err) {
-        console.error("Dashboard error:", err);
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
-// Update progress
 exports.updateContentProgress = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { serviceId, contentId } = req.body;
+  try {
+    const userId = req.user._id;
+    const { serviceId, contentId, contentUrl } = req.body;
 
-        if (!serviceId || !contentId) {
-            return res.status(400).json({ success: false, message: "serviceId and contentId are required" });
-        }
-
-        const user = await User.findById(userId).populate({
-            path: "membership",
-            populate: { path: "allowedServices", model: "Service" },
-        });
-
-        if (!user) return res.status(404).json({ success: false, message: "User not found" });
-        if (!user.membership) return res.status(400).json({ success: false, message: "No membership assigned" });
-
-        const userPlan = user.membership.planName;
-        const service = user.membership.allowedServices.find(
-            s => s._id.toString() === serviceId.toString()
-        );
-        if (!service) return res.status(404).json({ success: false, message: "Service not found in membership" });
-
-        // ✅ Now your planContents are arrays of objects, not strings
-        const contentsArray = service.planContents?.[userPlan] || [];
-        const totalContents = contentsArray.length;
-
-        let progress = user.servicesProgress.find(p => p.serviceId.toString() === serviceId.toString());
-
-        if (!progress) {
-            progress = {
-                serviceId,
-                completedContents: [contentId],
-                totalContents,
-                progressPercent: totalContents > 0 ? (1 / totalContents) * 100 : 0,
-            };
-            user.servicesProgress.push(progress);
-        } else {
-            if (!progress.completedContents.includes(contentId)) {
-                progress.completedContents.push(contentId);
-                progress.totalContents = totalContents;
-                const completedCount = progress.completedContents.length;
-                progress.progressPercent = totalContents > 0
-                    ? Math.min((completedCount / totalContents) * 100, 100)
-                    : 0;
-            }
-        }
-
-        await user.save();
-
-        res.json({
-            success: true,
-            message: "Progress updated successfully",
-            progress: {
-                completed: progress.completedContents.length,
-                total: totalContents,
-                percent: progress.progressPercent,
-            },
-        });
-    } catch (err) {
-        console.error("Error in updateContentProgress:", err);
-        res.status(500).json({ success: false, message: err.message });
+    if (!serviceId || !contentId) {
+      return res.status(400).json({
+        success: false,
+        message: "serviceId and contentId are required",
+      });
     }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // Get service to verify content exists and get total count
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found",
+      });
+    }
+
+    // Determine user's plan and get total contents for that plan
+    const userPlan = user.membership?.planName || "Startup"; // fallback
+    const planContents = service.planContents?.[userPlan] || [];
+    const totalContents = planContents.length;
+
+    // Find or create progress record
+    let progressIndex = user.servicesProgress.findIndex(
+      (p) => p.serviceId.toString() === serviceId.toString()
+    );
+
+    if (progressIndex === -1) {
+      // Create new progress record
+      user.servicesProgress.push({
+        serviceId,
+        completedContents: [contentId],
+        totalContents,
+        progressPercent: totalContents > 0 ? (1 / totalContents) * 100 : 0,
+      });
+    } else {
+      // Update existing progress record
+      const progress = user.servicesProgress[progressIndex];
+      
+      // Only add if not already completed
+      if (!progress.completedContents.includes(contentId)) {
+        progress.completedContents.push(contentId);
+        progress.totalContents = totalContents;
+        
+        const completedCount = progress.completedContents.length;
+        progress.progressPercent = totalContents > 0
+          ? Math.min((completedCount / totalContents) * 100, 100)
+          : 0;
+      }
+    }
+
+    // Mark the array as modified
+    user.markModified("servicesProgress");
+    await user.save();
+
+    const updatedProgress = user.servicesProgress.find(
+      (p) => p.serviceId.toString() === serviceId.toString()
+    );
+
+    res.json({
+      success: true,
+      message: "Progress updated successfully",
+      progress: {
+        completed: updatedProgress.completedContents.length,
+        total: updatedProgress.totalContents,
+        percent: updatedProgress.progressPercent,
+      },
+    });
+  } catch (err) {
+    console.error("Error in updateContentProgress:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Update the dashboard controller to include completed content IDs
+exports.getDashboard = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate("membership")
+      .populate("servicesProgress.serviceId");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const services = await Service.find({});
+    const progress = user.servicesProgress || [];
+
+    const formattedServices = services.map((service) => {
+      const userProgress = progress.find(
+        (p) => p.serviceId?.toString() === service._id.toString()
+      );
+
+      // Get total contents for user's plan
+      const userPlan = user.membership?.planName || "Startup";
+      const planContents = service.planContents?.[userPlan] || [];
+      const totalFiles = planContents.length;
+
+      const completedCount = userProgress ? userProgress.completedContents.length : 0;
+      const percent = totalFiles > 0 ? Math.min((completedCount / totalFiles) * 100, 100) : 0;
+
+      return {
+        _id: service._id,
+        name: service.name,
+        totalContents: totalFiles,
+        completedContents: completedCount,
+        progressPercent: percent,
+        // Include completed content IDs for frontend tracking
+        completedContentIds: userProgress ? userProgress.completedContents : []
+      };
+    });
+
+    res.json({
+      success: true,
+      membership: user.membership,
+      services: formattedServices,
+      progress: user.servicesProgress // Send full progress data
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
 };
 
 

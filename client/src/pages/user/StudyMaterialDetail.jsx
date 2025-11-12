@@ -14,7 +14,7 @@ const StudyMaterialDetail = () => {
   const [completedContents, setCompletedContents] = useState(new Set());
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
 
-  // 🔹 Fetch study material
+  // 🔹 Fetch study material with proper progress tracking
   useEffect(() => {
     const initializeData = async () => {
       try {
@@ -26,9 +26,8 @@ const StudyMaterialDetail = () => {
 
         // Case 1: Passed via navigation
         if (selectedService) {
-          setServiceData(selectedService);
-          await fetchUserProgress(selectedService.serviceId || selectedService._id);
-          setLoading(false);
+          console.log("Service data from navigation:", selectedService);
+          await initializeServiceData(selectedService);
           return;
         }
 
@@ -43,8 +42,8 @@ const StudyMaterialDetail = () => {
               String(item.serviceId) === String(id) || String(item._id) === String(id)
           );
           if (found) {
-            setServiceData(found);
-            await fetchUserProgress(found.serviceId || found._id);
+            console.log("Service data from API:", found);
+            await initializeServiceData(found);
           }
         }
       } catch (err) {
@@ -57,72 +56,139 @@ const StudyMaterialDetail = () => {
     initializeData();
   }, [id, state]);
 
-  // 🔹 Fetch user progress
-  const fetchUserProgress = async (serviceId) => {
+  // 🔹 Initialize service data with progress
+  const initializeServiceData = async (service) => {
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${baseUrl}/user/dashboard`, {
+      
+      // First, get user's progress data
+      const userRes = await axios.get(`${baseUrl}/user/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.data.success) {
-        const serviceProgress = res.data.progress.find(
-          (p) => String(p.serviceId) === String(serviceId)
+      console.log("User profile response:", userRes.data);
+
+      if (userRes.data.success && userRes.data.data.servicesProgress) {
+        const serviceId = service.serviceId || service._id;
+        const serviceProgress = userRes.data.data.servicesProgress.find(
+          (sp) => String(sp.serviceId) === String(serviceId)
         );
 
-        if (serviceProgress) {
-          setProgress({
-            completed: serviceProgress.completed || 0,
-            total: serviceProgress.total || 0,
-          });
-          if (serviceProgress.completedContentIds) {
-            setCompletedContents(new Set(serviceProgress.completedContentIds));
-          }
-        }
+        console.log("Found service progress:", serviceProgress);
+
+        // Set completed content IDs
+        const completedIds = new Set(serviceProgress?.completedContents || []);
+        setCompletedContents(completedIds);
+
+        // Set progress
+        const totalContents = service.contents?.length || 0;
+        const completedCount = serviceProgress?.completedContents?.length || 0;
+        
+        setProgress({
+          completed: completedCount,
+          total: totalContents
+        });
+
+        console.log("Progress set:", { completed: completedCount, total: totalContents });
       }
+
+      // Enhance service data with proper content IDs
+      const enhancedService = await enhanceServiceWithContentIds(service);
+      setServiceData(enhancedService);
+
     } catch (error) {
-      console.error("Error fetching progress:", error);
+      console.error("Error initializing service data:", error);
+      // Fallback: set service data without progress
+      const enhancedService = await enhanceServiceWithContentIds(service);
+      setServiceData(enhancedService);
     }
   };
 
-  // 🔹 Handle content open + progress update
+  // 🔹 Enhance service data with proper content IDs
+  const enhanceServiceWithContentIds = async (service) => {
+    try {
+      if (!service.contents) return service;
+
+      // Create enhanced contents with proper IDs
+      const enhancedContents = service.contents.map((content, index) => ({
+        ...content,
+        // Use existing _id or create a consistent one based on URL
+        _id: content._id || generateContentId(content, service.serviceId || service._id, index),
+      }));
+
+      return {
+        ...service,
+        contents: enhancedContents
+      };
+    } catch (error) {
+      console.error("Error enhancing service data:", error);
+      return service;
+    }
+  };
+
+  // 🔹 Generate consistent content ID
+  const generateContentId = (content, serviceId, index) => {
+    // Use URL hash for consistency, or fallback to index-based ID
+    if (content.url) {
+      return `content-${serviceId}-${btoa(content.url).slice(0, 10)}-${index}`;
+    }
+    return `content-${serviceId}-${index}`;
+  };
+
+  // 🔹 Improved content opening with progress tracking
   const handleOpenContent = async (content) => {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) return alert("Please login first!");
 
       const serviceId = serviceData.serviceId || serviceData._id;
+      const contentId = content._id;
 
-      // If already completed, just open
-      if (completedContents.has(content._id)) {
+      console.log("Opening content:", { serviceId, contentId, content });
+
+      // If already completed → just open it
+      if (completedContents.has(contentId)) {
         return window.open(content.url, "_blank", "noopener,noreferrer");
       }
 
-      // Update backend progress
+      // ✅ Update backend progress
       const updateRes = await axios.post(
         `${baseUrl}/user/update-content-progress`,
         {
           serviceId,
-          contentId: content._id,
+          contentId: contentId,
+          contentUrl: content.url // Send URL as backup identifier
         },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (updateRes.data.success) {
-        // ✅ Instantly update UI progress
-        setCompletedContents((prev) => new Set(prev).add(content._id));
-        setProgress((prev) => ({
-          completed: Math.min(prev.completed + 1, prev.total || prev.completed + 1),
-          total: prev.total || serviceData.contents?.length || 0,
+        // ✅ Instantly update local UI
+        setCompletedContents((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(contentId);
+          return newSet;
+        });
+
+        setProgress((prev) => {
+          const totalCount = serviceData?.contents?.length || prev.total || 0;
+          const nextCompleted = Math.min(prev.completed + 1, totalCount);
+          return { completed: nextCompleted, total: totalCount };
+        });
+
+        // ✅ Dispatch event for Dashboard to auto-refresh
+        window.dispatchEvent(new CustomEvent("progressUpdated", {
+          detail: { serviceId, contentId }
         }));
+
+        console.log("Progress updated successfully");
       }
 
-      // Open content in new tab
+      // ✅ Open content in new tab
       window.open(content.url, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Error updating progress:", error);
+      // Still open the content even if progress update fails
       window.open(content.url, "_blank", "noopener,noreferrer");
     }
   };
@@ -132,7 +198,10 @@ const StudyMaterialDetail = () => {
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading study material...</div>
+        <div className="flex items-center gap-3">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+          <div className="text-gray-600">Loading study material...</div>
+        </div>
       </div>
     );
   }
@@ -147,8 +216,12 @@ const StudyMaterialDetail = () => {
           <ArrowLeft className="mr-2" /> Back to Materials
         </button>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-red-600 mb-2">Material Not Found</h2>
-          <p className="text-gray-600">The requested study material could not be loaded.</p>
+          <h2 className="text-xl font-semibold text-red-600 mb-2">
+            Material Not Found
+          </h2>
+          <p className="text-gray-600">
+            The requested study material could not be loaded.
+          </p>
         </div>
       </div>
     );
@@ -178,12 +251,13 @@ const StudyMaterialDetail = () => {
           {serviceData.serviceName || serviceData.name}
         </h1>
 
-        {/* Progress Bar */}
+        {/* ✅ Progress Bar */}
         <div className="mb-4">
           <div className="flex justify-between text-sm text-gray-600 mb-2">
             <span>Overall Progress</span>
             <span className="font-semibold">
-              {progress.completed}/{totalContents} ({Math.round(progressPercent)}%)
+              {progress.completed}/{totalContents} (
+              {Math.round(progressPercent)}%)
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -198,12 +272,12 @@ const StudyMaterialDetail = () => {
           <span>📚 Total Contents: {totalContents}</span>
           <span>🎬 Videos: {videos.length}</span>
           <span>📄 PDFs: {pdfs.length}</span>
+          <span>✅ Completed: {progress.completed}</span>
         </div>
       </div>
 
-      {/* Content Sections */}
+      {/* ✅ Content Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Videos Section */}
         <ContentSection
           title="Video Lessons"
           icon={Video}
@@ -213,7 +287,6 @@ const StudyMaterialDetail = () => {
           handleOpenContent={handleOpenContent}
         />
 
-        {/* PDFs Section */}
         <ContentSection
           title="Documents & PDFs"
           icon={FileText}
@@ -255,7 +328,9 @@ const ContentSection = ({
                 className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
                   isContentCompleted(content)
                     ? "bg-green-50 border-green-200"
-                    : "bg-gray-50 border-gray-200 hover:border-" + color + "-300"
+                    : "bg-gray-50 border-gray-200 hover:border-" +
+                      color +
+                      "-300"
                 }`}
               >
                 <div className="flex items-center gap-3 flex-1">
@@ -273,9 +348,13 @@ const ContentSection = ({
                     )}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{content.title}</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      {content.title}
+                    </h3>
                     <p className="text-sm text-gray-600">
-                      {isContentCompleted(content) ? "Completed" : content.type.toUpperCase()}
+                      {isContentCompleted(content)
+                        ? "Completed"
+                        : content.type.toUpperCase()}
                     </p>
                   </div>
                 </div>
