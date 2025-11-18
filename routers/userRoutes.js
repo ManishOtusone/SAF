@@ -50,5 +50,7 @@ router.get("/my-referrals", protect, getMyReferrals);
 /* CONTENT REQUEST */
 router.post("/request-content", protect, createRequestContent);
 router.get("/my-requested-content", protect, getMyRequestedContent);
+router.get("/getDefaultMembershipsPlans",getMembershipData);
+
 
 module.exports = router;
