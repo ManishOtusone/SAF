@@ -12,6 +12,11 @@ const membershipSchema = new mongoose.Schema({
     allowedServices: [
         { type: mongoose.Schema.Types.ObjectId, ref: "Service" }
     ],
+    contentLimit: {
+        type: Number,
+        required: true,
+        default: 0
+    },
     createdAt: { type: Date, default: Date.now },
 });
 

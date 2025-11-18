@@ -72,8 +72,21 @@ const MembershipPlans = () => {
     fetchAllData();
   }, []);
 
-  const normalizePlan = (p) =>
-    p?.toLowerCase()?.replace("stage", "").replace(" ", "");
+  const normalizePlan = (p) => {
+    if (!p) return "";
+
+    // Convert UI labels like "MATURED" → "mature"
+    if (p.includes("MATURE")) return "mature";
+    if (p.includes("GROWTH")) return "growth";
+    if (p.includes("START")) return "startup";
+
+    // Convert backend names like "MatureStage" → "mature"
+    if (p === "MatureStage") return "mature";
+    if (p === "GrowthStage") return "growth";
+    if (p === "StartupStage") return "startup";
+
+    return p.toLowerCase().trim();
+  };
 
   const handleUpgradeClick = (planLabel) => {
     setSelectedPlan(planLabel);
@@ -142,7 +155,7 @@ const MembershipPlans = () => {
             <tr>
               <th className="p-3 border border-gray-300 text-left w-12">SR. NO</th>
               <th className="p-3 border border-gray-300 text-left">Benefit / Service</th>
-              <th className="p-3 border border-gray-300 text-center">Link</th>
+              {/* <th className="p-3 border border-gray-300 text-center">Link</th> */}
 
               {plans.map((plan, i) => (
                 <th key={i} className="p-3 border border-gray-300 text-center">
@@ -167,7 +180,7 @@ const MembershipPlans = () => {
                 <td className="p-3 border border-gray-300">{benefit.name}</td>
 
                 {/* ✅ Link Column */}
-                <td className="p-3 border border-gray-300 text-center">
+                {/* <td className="p-3 border border-gray-300 text-center">
                   {benefit.link && benefit.link.trim() !== "" ? (
                     <a
                       href={benefit.link}
@@ -180,7 +193,7 @@ const MembershipPlans = () => {
                   ) : (
                     "-"
                   )}
-                </td>
+                </td> */}
 
                 {/* Plan Values */}
                 {plans.map((_, i) => (
@@ -193,7 +206,7 @@ const MembershipPlans = () => {
 
             {/* Upgrade / Current Plan Row */}
             <tr className="bg-yellow-600">
-              <td className="p-4 border border-gray-300" colSpan="3"></td>
+              <td className="p-4 border border-gray-300" colSpan="2"></td>
 
               {plans.map((plan, i) => {
                 const uiPlan = normalizePlan(plan.label);
@@ -233,11 +246,10 @@ const MembershipPlans = () => {
             <button
               onClick={handlePayment}
               disabled={isPaying}
-              className={`w-full py-2 rounded-lg text-white font-semibold ${
-                isPaying
+              className={`w-full py-2 rounded-lg text-white font-semibold ${isPaying
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-yellow-600 hover:bg-yellow-700"
-              }`}
+                }`}
             >
               {isPaying ? "Processing..." : "Pay Now"}
             </button>

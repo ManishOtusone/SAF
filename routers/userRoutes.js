@@ -1,30 +1,54 @@
 const express = require("express");
 const { protect } = require("../middlewares/authMiddleware");
-const { getDashboard, getStudyMaterialsForUser, updateContentProgress, assignMembership, getFullUserDetails, createEnquiry, createReferral, getMyReferrals } = require("../controllers/userController");
-const { getMembershipData, getAllMemberships } = require("../controllers/adminController");
-const { createRequestContent } = require("../controllers/contentRequest");
+
+const {
+    getDashboard,
+    getStudyMaterialsForUser,
+    updateContentProgress,
+    assignMembership,
+    getFullUserDetails,
+    createEnquiry,
+    createReferral,
+    getMyReferrals,
+    createRequestContent,
+    getMyRequestedContent,
+    markStudyMaterialComplete,   // ⭐ IMPORT THIS
+} = require("../controllers/userController");
+
+const {
+    getMembershipData,
+    getAllMemberships
+} = require("../controllers/adminController");
 
 const router = express.Router();
 
+/* DASHBOARD */
 router.get("/dashboard", protect, getDashboard);
-// router.post("/update-progress", protect, updateContentProgress);
-router.post('/update-content-progress', protect, updateContentProgress);
+
+/* PROGRESS TRACKING */
+router.post("/update-content-progress", protect, updateContentProgress);
+router.post("/complete-study-material", protect, markStudyMaterialComplete);   // ⭐ FIXED
+
+/* MEMBERSHIP */
 router.get("/getMembershipsPlans", protect, getMembershipData);
-router.get("/study-materials", protect, getStudyMaterialsForUser);
 router.post("/assignMembership/:membershipId", protect, assignMembership);
 router.get("/allMemberships", protect, getAllMemberships);
-router.get("/getDefaultMembershipsPlans", getMembershipData);
+
+/* USER DATA */
 router.get("/getAllUserDetails", protect, getFullUserDetails);
+
+/* STUDY MATERIALS */
+router.get("/study-materials", protect, getStudyMaterialsForUser);  // ⭐ Only once
+
+/* ENQUIRY */
 router.post("/createEnquiry", protect, createEnquiry);
+
+/* REFERRAL */
 router.post("/create", protect, createReferral);
 router.get("/my-referrals", protect, getMyReferrals);
-router.post("/create-content-request", protect, createRequestContent)
 
-
-
-
-
-
-
+/* CONTENT REQUEST */
+router.post("/request-content", protect, createRequestContent);
+router.get("/my-requested-content", protect, getMyRequestedContent);
 
 module.exports = router;

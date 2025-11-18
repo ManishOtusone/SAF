@@ -23,9 +23,28 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ["user", "admin"], default: "user" },
     isVerified: { type: Boolean, default: false },
 
+    // ⭐ STUDY MATERIALS ADDED BY ADMIN
+    userContents: [
+        {
+            title: { type: String, required: true },
+            type: { type: String, enum: ["video", "pdf"], required: true },
+            url: { type: String, required: true },
+            uploadedAt: { type: Date, default: Date.now },
+        }
+    ],
+
+    // ⭐ NEW: TRACK WHAT USER HAS COMPLETED
+    userCompletedContents: [
+        {
+            contentId: { type: String, required: true },
+            completedAt: { type: Date, default: Date.now },
+        }
+    ],
+
     membership: { type: mongoose.Schema.Types.ObjectId, ref: "Membership", default: null },
     validTill: { type: Date, default: null },
 
+    // ⭐ PROGRESS FOR SERVICE-BASED MATERIALS
     servicesProgress: [
         {
             serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },

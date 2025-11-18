@@ -15,8 +15,11 @@ const StudyMaterial = () => {
         const res = await axios.get(`${baseUrl}/user/study-materials`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log("API Response:", res.data); // Debug log
+
+        console.log("API Response:", res.data);
+
         if (res.data.success) {
+          // ⬅️ Backend returns: studyMaterials = user.userContents
           setMaterials(res.data.studyMaterials);
           setPlan(res.data.plan);
         }
@@ -24,13 +27,14 @@ const StudyMaterial = () => {
         console.error(err);
       }
     };
+
     fetchMaterials();
   }, []);
 
+  // NEW — Open details page with contentData
   const handleClick = (item) => {
-    console.log("Clicked item:", item); // Debug log
-    navigate(`/user/studyMaterial/${item.serviceId || item._id}`, {
-      state: { serviceData: item }
+    navigate(`/user/studyMaterial/${item._id}`, {
+      state: { contentData: item }
     });
   };
 
@@ -45,27 +49,54 @@ const StudyMaterial = () => {
           <thead>
             <tr className="bg-gradient-to-r from-green-600 to-yellow-500 text-white text-left">
               <th className="py-3 px-4 font-medium">#</th>
-              <th className="py-3 px-4 font-medium">Service</th>
-              <th className="py-3 px-4 font-medium">Available Contents</th>
+              <th className="py-3 px-4 font-medium">Title</th>
+              <th className="py-3 px-4 font-medium">Type</th>
+              <th className="py-3 px-4 font-medium">Action</th>
             </tr>
           </thead>
+
           <tbody>
             {materials.map((item, index) => (
               <tr
-                key={index}
-                onClick={() => handleClick(item)}
-                className={`border-b cursor-pointer hover:bg-yellow-50 transition ${index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  }`}
+                key={item._id}
+                className={`border-b cursor-pointer hover:bg-yellow-50 transition ${
+                  index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                }`}
               >
-                <td className="py-3 px-4 text-gray-700 font-medium">
-                  {index + 1}
+                <td className="py-3 px-4">{index + 1}</td>
+
+                {/* Title */}
+                <td className="py-3 px-4 font-medium text-gray-800">
+                  {item.title}
                 </td>
-                <td className="py-3 px-4 text-gray-800">{item.serviceName}</td>
-                <td className="py-3 px-4 text-gray-600">
-                  {item.contents?.length || 0} {item.contents?.length === 1 ? "file" : "files"}
+
+                {/* Type (video/pdf) */}
+                <td className="py-3 px-4 capitalize text-gray-700">
+                  {item.type}
+                </td>
+
+                {/* View Button */}
+                <td className="py-3 px-4">
+                  <button
+                    onClick={() => handleClick(item)}
+                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                  >
+                    View
+                  </button>
                 </td>
               </tr>
             ))}
+
+            {materials.length === 0 && (
+              <tr>
+                <td
+                  colSpan="4"
+                  className="text-center py-6 text-gray-500 font-medium"
+                >
+                  No study materials uploaded yet.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

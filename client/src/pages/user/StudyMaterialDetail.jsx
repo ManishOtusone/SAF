@@ -1,390 +1,74 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import axios from "axios";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, FileText, Video, Download, CheckCircle } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { baseUrl } from "../../utils/baseUrl";
 
 const StudyMaterialDetail = () => {
   const { state } = useLocation();
-  const navigate = useNavigate();
-  const { id } = useParams();
+  const item = state?.contentData;
 
-  const [serviceData, setServiceData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [completedContents, setCompletedContents] = useState(new Set());
-  const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  if (!item) return <div className="p-6">Invalid material</div>;
 
-  // 🔹 Fetch study material with proper progress tracking
+  // ⭐⭐⭐ AUTO-MARK AS COMPLETED HERE ⭐⭐⭐
   useEffect(() => {
-    const initializeData = async () => {
+    const markComplete = async () => {
       try {
-        setLoading(true);
         const token = localStorage.getItem("accessToken");
-        if (!token) return setLoading(false);
 
-        let selectedService = state?.serviceData;
+        await axios.post(
+          `${baseUrl}/user/complete-study-material`,
+          { contentId: item._id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-        // Case 1: Passed via navigation
-        if (selectedService) {
-          console.log("Service data from navigation:", selectedService);
-          await initializeServiceData(selectedService);
-          return;
-        }
-
-        // Case 2: Fetch from API
-        const res = await axios.get(`${baseUrl}/user/study-materials`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.data.success && Array.isArray(res.data.studyMaterials)) {
-          const found = res.data.studyMaterials.find(
-            (item) =>
-              String(item.serviceId) === String(id) || String(item._id) === String(id)
-          );
-          if (found) {
-            console.log("Service data from API:", found);
-            await initializeServiceData(found);
-          }
-        }
+        // This refreshes the dashboard
+        window.dispatchEvent(new Event("progressUpdated"));
       } catch (err) {
-        console.error("Error initializing data:", err);
-      } finally {
-        setLoading(false);
+        console.log("Mark complete error", err);
       }
     };
 
-    initializeData();
-  }, [id, state]);
+    markComplete();
+  }, [item._id]);
+  // ⭐⭐⭐ END ⭐⭐⭐
 
-  // 🔹 Initialize service data with progress
-  const initializeServiceData = async (service) => {
+  // YOUTUBE EMBED FIX
+  const getEmbedUrl = (url) => {
     try {
-      const token = localStorage.getItem("accessToken");
-      
-      // First, get user's progress data
-      const userRes = await axios.get(`${baseUrl}/user/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      console.log("User profile response:", userRes.data);
-
-      if (userRes.data.success && userRes.data.data.servicesProgress) {
-        const serviceId = service.serviceId || service._id;
-        const serviceProgress = userRes.data.data.servicesProgress.find(
-          (sp) => String(sp.serviceId) === String(serviceId)
-        );
-
-        console.log("Found service progress:", serviceProgress);
-
-        // Set completed content IDs
-        const completedIds = new Set(serviceProgress?.completedContents || []);
-        setCompletedContents(completedIds);
-
-        // Set progress
-        const totalContents = service.contents?.length || 0;
-        const completedCount = serviceProgress?.completedContents?.length || 0;
-        
-        setProgress({
-          completed: completedCount,
-          total: totalContents
-        });
-
-        console.log("Progress set:", { completed: completedCount, total: totalContents });
+      if (url.includes("youtu.be")) {
+        const id = url.split("youtu.be/")[1].split("?")[0];
+        return `https://www.youtube.com/embed/${id}`;
       }
-
-      // Enhance service data with proper content IDs
-      const enhancedService = await enhanceServiceWithContentIds(service);
-      setServiceData(enhancedService);
-
-    } catch (error) {
-      console.error("Error initializing service data:", error);
-      // Fallback: set service data without progress
-      const enhancedService = await enhanceServiceWithContentIds(service);
-      setServiceData(enhancedService);
-    }
-  };
-
-  // 🔹 Enhance service data with proper content IDs
-  const enhanceServiceWithContentIds = async (service) => {
-    try {
-      if (!service.contents) return service;
-
-      // Create enhanced contents with proper IDs
-      const enhancedContents = service.contents.map((content, index) => ({
-        ...content,
-        // Use existing _id or create a consistent one based on URL
-        _id: content._id || generateContentId(content, service.serviceId || service._id, index),
-      }));
-
-      return {
-        ...service,
-        contents: enhancedContents
-      };
-    } catch (error) {
-      console.error("Error enhancing service data:", error);
-      return service;
-    }
-  };
-
-  // 🔹 Generate consistent content ID
-  const generateContentId = (content, serviceId, index) => {
-    // Use URL hash for consistency, or fallback to index-based ID
-    if (content.url) {
-      return `content-${serviceId}-${btoa(content.url).slice(0, 10)}-${index}`;
-    }
-    return `content-${serviceId}-${index}`;
-  };
-
-  // 🔹 Improved content opening with progress tracking
-  const handleOpenContent = async (content) => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return alert("Please login first!");
-
-      const serviceId = serviceData.serviceId || serviceData._id;
-      const contentId = content._id;
-
-      console.log("Opening content:", { serviceId, contentId, content });
-
-      // If already completed → just open it
-      if (completedContents.has(contentId)) {
-        return window.open(content.url, "_blank", "noopener,noreferrer");
+      if (url.includes("watch?v=")) {
+        const id = url.split("watch?v=")[1].split("&")[0];
+        return `https://www.youtube.com/embed/${id}`;
       }
-
-      // ✅ Update backend progress
-      const updateRes = await axios.post(
-        `${baseUrl}/user/update-content-progress`,
-        {
-          serviceId,
-          contentId: contentId,
-          contentUrl: content.url // Send URL as backup identifier
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (updateRes.data.success) {
-        // ✅ Instantly update local UI
-        setCompletedContents((prev) => {
-          const newSet = new Set(prev);
-          newSet.add(contentId);
-          return newSet;
-        });
-
-        setProgress((prev) => {
-          const totalCount = serviceData?.contents?.length || prev.total || 0;
-          const nextCompleted = Math.min(prev.completed + 1, totalCount);
-          return { completed: nextCompleted, total: totalCount };
-        });
-
-        // ✅ Dispatch event for Dashboard to auto-refresh
-        window.dispatchEvent(new CustomEvent("progressUpdated", {
-          detail: { serviceId, contentId }
-        }));
-
-        console.log("Progress updated successfully");
-      }
-
-      // ✅ Open content in new tab
-      window.open(content.url, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Error updating progress:", error);
-      // Still open the content even if progress update fails
-      window.open(content.url, "_blank", "noopener,noreferrer");
+      return url;
+    } catch {
+      return url;
     }
   };
 
-  const isContentCompleted = (content) => completedContents.has(content._id);
-
-  if (loading) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
-          <div className="text-gray-600">Loading study material...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!serviceData) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center text-gray-700 hover:text-green-600 transition mb-4"
-        >
-          <ArrowLeft className="mr-2" /> Back to Materials
-        </button>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-red-600 mb-2">
-            Material Not Found
-          </h2>
-          <p className="text-gray-600">
-            The requested study material could not be loaded.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const videos = serviceData.contents?.filter((c) => c.type === "video") || [];
-  const pdfs = serviceData.contents?.filter((c) => c.type === "pdf") || [];
-  const totalContents = serviceData.contents?.length || 0;
-  const progressPercent = totalContents
-    ? (progress.completed / totalContents) * 100
-    : 0;
+  const finalUrl = item.type === "video" ? getEmbedUrl(item.url) : item.url;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center text-gray-700 hover:text-green-600 transition mb-6"
-      >
-        <ArrowLeft className="mr-2" size={20} />
-        Back to Materials
-      </button>
+    <div className="p-6">
+      <h1 className="text-xl font-bold mb-4">{item.title}</h1>
 
-      {/* Service Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {serviceData.serviceName || serviceData.name}
-        </h1>
-
-        {/* ✅ Progress Bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Overall Progress</span>
-            <span className="font-semibold">
-              {progress.completed}/{totalContents} (
-              {Math.round(progressPercent)}%)
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-green-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div className="flex gap-6 text-sm text-gray-600">
-          <span>📚 Total Contents: {totalContents}</span>
-          <span>🎬 Videos: {videos.length}</span>
-          <span>📄 PDFs: {pdfs.length}</span>
-          <span>✅ Completed: {progress.completed}</span>
-        </div>
-      </div>
-
-      {/* ✅ Content Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <ContentSection
-          title="Video Lessons"
-          icon={Video}
-          color="red"
-          contents={videos}
-          isContentCompleted={isContentCompleted}
-          handleOpenContent={handleOpenContent}
-        />
-
-        <ContentSection
-          title="Documents & PDFs"
-          icon={FileText}
-          color="blue"
-          contents={pdfs}
-          isContentCompleted={isContentCompleted}
-          handleOpenContent={handleOpenContent}
-        />
-      </div>
-    </div>
-  );
-};
-
-// ✅ Reusable Content Section Component
-const ContentSection = ({
-  title,
-  icon: Icon,
-  color,
-  contents,
-  isContentCompleted,
-  handleOpenContent,
-}) => {
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div
-        className={`bg-gradient-to-r from-${color}-500 to-${color}-600 text-white p-4 rounded-t-lg`}
-      >
-        <h2 className="text-xl font-semibold flex items-center gap-3">
-          <Icon size={24} />
-          {title} ({contents.length})
-        </h2>
-      </div>
-      <div className="p-4">
-        {contents.length > 0 ? (
-          <div className="space-y-3">
-            {contents.map((content) => (
-              <div
-                key={content._id}
-                className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                  isContentCompleted(content)
-                    ? "bg-green-50 border-green-200"
-                    : "bg-gray-50 border-gray-200 hover:border-" +
-                      color +
-                      "-300"
-                }`}
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      isContentCompleted(content)
-                        ? "bg-green-100"
-                        : `bg-${color}-100`
-                    }`}
-                  >
-                    {isContentCompleted(content) ? (
-                      <CheckCircle size={18} className="text-green-600" />
-                    ) : (
-                      <Icon size={18} className={`text-${color}-600`} />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {content.title}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {isContentCompleted(content)
-                        ? "Completed"
-                        : content.type.toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleOpenContent(content)}
-                  className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 ${
-                    isContentCompleted(content)
-                      ? "bg-green-600 hover:bg-green-700"
-                      : `bg-${color}-600 hover:bg-${color}-700`
-                  }`}
-                >
-                  {isContentCompleted(content) ? (
-                    <CheckCircle size={16} />
-                  ) : content.type === "video" ? (
-                    <Video size={16} />
-                  ) : (
-                    <Download size={16} />
-                  )}
-                  {isContentCompleted(content) ? "Completed" : "Open"}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <Icon size={48} className="mx-auto mb-3 text-gray-300" />
-            <p>No {title.toLowerCase()} available</p>
-          </div>
-        )}
-      </div>
+      {item.type === "pdf" ? (
+        <iframe
+          src={item.url}
+          className="w-full h-[80vh] border"
+          title="PDF Viewer"
+        ></iframe>
+      ) : (
+        <iframe
+          src={finalUrl}
+          className="w-full h-[80vh] border"
+          allowFullScreen
+          title="Video Viewer"
+        ></iframe>
+      )}
     </div>
   );
 };

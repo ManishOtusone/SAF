@@ -6,9 +6,10 @@ const {
     createService, updateService, getAllServices,
     createMembership, getAllMemberships, assignMembership, getAllUsers,
     getMembershipData, saveMembershipData, uploadServiceContent,
-    getAllEnquiries, deleteEnquiry, getAllReferrals, updateReferralStatus
+    getAllEnquiries, deleteEnquiry, getAllReferrals, updateReferralStatus,
+    getAllContentRequests
 } = require("../controllers/adminController");
-const { getAllRequests } = require("../controllers/contentRequest");
+// const { getAllRequests } = require("../controllers/contentRequest");
 
 /* SERVICE ROUTES */
 router.post("/service", protect, authorizeRoles("admin"), createService);
@@ -33,7 +34,10 @@ router.delete("/delete/:id", protect, authorizeRoles("admin"), deleteEnquiry);
 router.get("/allRefral", protect, authorizeRoles("admin"), getAllReferrals);
 router.put("/update-status/:id", protect, authorizeRoles("admin"), updateReferralStatus);
 
+router.get("/content-requests", protect, authorizeRoles("admin"), getAllContentRequests);
+
+
 /* CONTENT REQUEST ROUTES */
-router.get("/get-all-request", protect, authorizeRoles("admin"), getAllRequests);
+// router.get("/get-all-request", protect, authorizeRoles("admin"), getAllRequests);
 
 module.exports = router;

@@ -17,7 +17,7 @@ import AdminEnquiry from "./pages/admin/Enquiry";
 import { Toaster } from "react-hot-toast";
 import AllReferalls from "./pages/admin/AllReferalls";
 import Referalls from "./pages/user/Referalls";
-import Contents from "./pages/user/Contents";
+import Contents from "./pages/user/Content";
 import RequestedContents from "./pages/admin/RequestedContents";
 
 function App() {

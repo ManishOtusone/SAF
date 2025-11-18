@@ -17,7 +17,6 @@ const ServiceManagement = () => {
     startup: "",
     growth: "",
     matured: "",
-    pdfUrl: "",
   });
 
   // ✅ Fetch Membership Plans & Services
@@ -33,7 +32,7 @@ const ServiceManagement = () => {
         if (res.data.success) {
           const data = res.data.data || {};
 
-          // ✅ Always show 3 default plans
+          // Plans
           const backendPlans = data.plans || [];
           const fixedPlans = DEFAULT_PLANS.map((defaultPlan, index) => {
             const match = backendPlans[index] || {};
@@ -44,7 +43,7 @@ const ServiceManagement = () => {
           });
           setPlans(fixedPlans);
 
-          // ✅ Prepare services / benefits
+          // Services (WITHOUT LINK)
           setServices(
             (data.benefits || []).map((b, index) => ({
               id: `${b.name}-${index}-${Date.now()}`,
@@ -52,7 +51,6 @@ const ServiceManagement = () => {
               startup: b.values?.[0] ?? "",
               growth: b.values?.[1] ?? "",
               matured: b.values?.[2] ?? "",
-              pdfUrl: b.pdfUrl ?? "",
             }))
           );
         }
@@ -66,21 +64,21 @@ const ServiceManagement = () => {
     fetchMembershipData();
   }, []);
 
-  // ✅ Update service fields
+  // Edit service value
   const handleEdit = (index, field, value) => {
     setServices((prev) =>
       prev.map((srv, i) => (i === index ? { ...srv, [field]: value } : srv))
     );
   };
 
-  // ✅ Update plan fields
+  // Edit plan value
   const handlePlanEdit = (index, field, value) => {
     const updated = [...plans];
     updated[index][field] = value;
     setPlans(updated);
   };
 
-  // ✅ Add new service
+  // Add new service
   const handleAdd = () => {
     if (!newService.name.trim()) return;
 
@@ -90,21 +88,21 @@ const ServiceManagement = () => {
     };
 
     setServices((prev) => [...prev, newEntry]);
+
     setNewService({
       name: "",
       startup: "",
       growth: "",
       matured: "",
-      pdfUrl: "",
     });
   };
 
-  // ✅ Delete service
+  // Delete service
   const handleDelete = (index) => {
     setServices((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ✅ Save all changes (keep pasted link as it is)
+  // Save updated data
   const handleSave = async () => {
     try {
       setLoading(true);
@@ -115,7 +113,6 @@ const ServiceManagement = () => {
         benefits: services.map((s) => ({
           name: s.name,
           values: [s.startup, s.growth, s.matured],
-          pdfUrl: s.pdfUrl || "",
         })),
       };
 
@@ -123,10 +120,10 @@ const ServiceManagement = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      alert(res.data.success ? "✅ Membership updated successfully!" : "⚠️ Failed to update membership.");
+      alert(res.data.success ? "Membership updated successfully!" : "Failed to update.");
     } catch (err) {
       console.error("Error updating membership:", err);
-      alert("❌ Error while saving changes.");
+      alert("Error while saving changes.");
     } finally {
       setLoading(false);
     }
@@ -136,19 +133,20 @@ const ServiceManagement = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Service Management</h1>
 
-      {/* ✅ Plans Section */}
+      {/* Plans */}
       <div className="flex flex-wrap gap-4 mb-6">
         {plans.map((plan, index) => (
           <div
             key={index}
-            className="bg-white shadow rounded-lg p-4 w-full sm:w-1/3 border border-gray-200"
+            className="bg-white shadow rounded-lg p-4 w-full sm:w-1/3 border"
           >
             <input
               type="text"
               value={plan.name}
               onChange={(e) => handlePlanEdit(index, "name", e.target.value)}
-              className="font-semibold text-lg border-b border-gray-300 w-full mb-2 outline-none"
+              className="font-semibold text-lg border-b w-full mb-2 outline-none"
             />
+
             <div className="flex items-center gap-2">
               <span>₹</span>
               <input
@@ -163,8 +161,8 @@ const ServiceManagement = () => {
         ))}
       </div>
 
-      {/* ✅ Services Table */}
-      <div className="overflow-x-auto bg-white shadow-md rounded-lg border border-gray-200">
+      {/* Services Table */}
+      <div className="overflow-x-auto bg-white shadow-md rounded-lg border">
         <table className="min-w-full border-collapse text-sm">
           <thead>
             <tr className="bg-yellow-400 text-gray-900">
@@ -173,7 +171,6 @@ const ServiceManagement = () => {
               <th className="p-2 border">Startup</th>
               <th className="p-2 border">Growth</th>
               <th className="p-2 border">Matured</th>
-              <th className="p-2 border">Link</th>
               <th className="p-2 border">Actions</th>
             </tr>
           </thead>
@@ -219,36 +216,6 @@ const ServiceManagement = () => {
                   />
                 </td>
 
-                {/* ✅ Show Clickable Link + Remove */}
-                <td className="p-2 border w-64 text-center">
-                  {srv.pdfUrl ? (
-                    <div className="flex flex-col items-center">
-                      <a
-                        href={srv.pdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 underline mb-1 truncate hover:text-blue-800"
-                      >
-                        View Link
-                      </a>
-                      <button
-                        onClick={() => handleEdit(i, "pdfUrl", "")}
-                        className="text-red-500 text-xs underline hover:text-red-700"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <input
-                      type="url"
-                      placeholder="Paste Google Drive URL"
-                      value={srv.pdfUrl}
-                      onChange={(e) => handleEdit(i, "pdfUrl", e.target.value)}
-                      className="border rounded px-2 py-1 text-xs w-full"
-                    />
-                  )}
-                </td>
-
                 <td className="p-2 border">
                   <button
                     onClick={() => handleDelete(i)}
@@ -260,9 +227,10 @@ const ServiceManagement = () => {
               </tr>
             ))}
 
-            {/* ✅ Add New Row */}
+            {/* Add New */}
             <tr className="bg-gray-50">
               <td className="p-2 border text-center">+</td>
+
               <td className="p-2 border">
                 <input
                   type="text"
@@ -274,6 +242,7 @@ const ServiceManagement = () => {
                   className="w-full border rounded px-2 py-1"
                 />
               </td>
+
               <td className="p-2 border">
                 <input
                   type="text"
@@ -285,6 +254,7 @@ const ServiceManagement = () => {
                   className="w-full border rounded px-2 py-1 text-center"
                 />
               </td>
+
               <td className="p-2 border">
                 <input
                   type="text"
@@ -296,6 +266,7 @@ const ServiceManagement = () => {
                   className="w-full border rounded px-2 py-1 text-center"
                 />
               </td>
+
               <td className="p-2 border">
                 <input
                   type="text"
@@ -307,17 +278,7 @@ const ServiceManagement = () => {
                   className="w-full border rounded px-2 py-1 text-center"
                 />
               </td>
-              <td className="p-2 border w-64 text-center">
-                <input
-                  type="url"
-                  placeholder="Paste Google Drive URL"
-                  value={newService.pdfUrl}
-                  onChange={(e) =>
-                    setNewService({ ...newService, pdfUrl: e.target.value })
-                  }
-                  className="border rounded px-2 py-1 text-xs w-full"
-                />
-              </td>
+
               <td className="p-2 border text-center">
                 <button
                   onClick={handleAdd}
@@ -331,7 +292,7 @@ const ServiceManagement = () => {
         </table>
       </div>
 
-      {/* ✅ Save Button */}
+      {/* Save Button */}
       <div className="mt-6 text-right">
         <button
           onClick={handleSave}

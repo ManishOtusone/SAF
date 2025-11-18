@@ -7,6 +7,8 @@ const fs = require("fs");
 const Enquiry = require("../models/enquirySchema");
 const Referral = require("../models/referralSchema");
 const path = require("path");
+const RequestContent = require("../models/requestContentModel");
+
 
 
 // Create new service
@@ -328,115 +330,84 @@ exports.saveMembershipData = async (req, res) => {
 
 exports.uploadServiceContent = async (req, res) => {
     try {
-        const { serviceName, access, userId } = req.body;
-        const files = req.files;
+        const { userId, videoUrl } = req.body;
+        const files = req.files || [];
 
-        // ✅ Validation
-        if (!serviceName || !files || files.length === 0 || !userId) {
+        if (!userId) {
             return res.status(400).json({
                 success: false,
-                message: "Service name, files, and user are required",
+                message: "User ID is required",
             });
         }
 
-        // ✅ Parse access control
-        let accessControl;
-        try {
-            accessControl = typeof access === "string" ? JSON.parse(access) : access;
-        } catch {
+        const hasVideo = videoUrl && videoUrl.trim() !== "";
+        const hasFiles = files.length > 0;
+
+        if (!hasVideo && !hasFiles) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid access control format",
+                message: "Please upload at least 1 file OR a video link",
             });
         }
 
-        // ✅ Find or create Service
-        let service = await Service.findOne({ name: serviceName });
-        if (!service) {
-            service = new Service({
-                name: serviceName,
-                description: "",
-                planContents: { Startup: [], GrowthStage: [], MatureStage: [] },
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
             });
         }
 
-        const uploadedFiles = [];
+        const uploadedContents = [];
 
-        // ✅ Loop through all uploaded files
+        // ⭐ Save Video URL
+        if (hasVideo) {
+            const videoData = {
+                title: "Video Content",
+                type: "video",
+                url: videoUrl,
+                uploadedAt: new Date(),
+            };
+
+            user.userContents.push(videoData);
+            uploadedContents.push(videoData);
+        }
+
+        // ⭐ Save Uploaded Files
         for (const file of files) {
-            // Automatically detect type (PDF, image, or video)
             const resourceType = file.mimetype.includes("video") ? "video" : "auto";
 
             const uploaded = await cloudinary.uploader.upload(file.path, {
                 resource_type: resourceType,
-                folder: "service_contents",
+                folder: "user_contents",
             });
 
-            // Convert /raw/upload/ → /upload/ (fix PDF preview issue)
-            const viewableUrl = uploaded.secure_url.replace(
-                "/raw/upload/",
-                "/upload/"
-            );
+            const viewableUrl = uploaded.secure_url.replace("/raw/upload/", "/upload/");
 
             const fileData = {
                 title: file.originalname,
                 type: file.mimetype.includes("video") ? "video" : "pdf",
                 url: viewableUrl,
-                publicId: uploaded.public_id,
                 uploadedAt: new Date(),
             };
 
-            uploadedFiles.push(fileData);
+            user.userContents.push(fileData);
+            uploadedContents.push(fileData);
 
-            // ✅ Assign file to the correct membership plan(s)
-            if (accessControl.startup) service.planContents.Startup.push(fileData);
-            if (accessControl.growth) service.planContents.GrowthStage.push(fileData);
-            if (accessControl.matured) service.planContents.MatureStage.push(fileData);
-
-            // ✅ Delete local temp file
             fs.unlinkSync(file.path);
         }
 
-        // ✅ Save updated service
-        await service.save();
+        await user.save();
 
-        // ✅ Update user's service progress
-        const user = await User.findById(userId);
-        if (user) {
-            const existingProgress = user.servicesProgress.find(
-                (p) => p.serviceId?.toString() === service._id.toString()
-            );
-
-            if (existingProgress) {
-                existingProgress.totalContents += uploadedFiles.length;
-                existingProgress.progressPercent =
-                    existingProgress.totalContents === 0
-                        ? 0
-                        : (existingProgress.completedContents.length /
-                            existingProgress.totalContents) *
-                        100;
-            } else {
-                user.servicesProgress.push({
-                    serviceId: service._id,
-                    completedContents: [],
-                    totalContents: uploadedFiles.length,
-                    progressPercent: 0,
-                });
-            }
-
-            await user.save();
-        }
-
-        // ✅ Success response
-        res.json({
+        return res.json({
             success: true,
-            message: "✅ Service content uploaded successfully!",
-            uploadedFiles,
-            service,
+            message: "Content uploaded successfully!",
+            contents: uploadedContents,
         });
+
     } catch (error) {
-        console.error("❌ Error uploading content:", error);
-        res.status(500).json({
+        console.error("UPLOAD ERROR:", error);
+        return res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message,
@@ -518,6 +489,24 @@ exports.updateReferralStatus = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getAllContentRequests = async (req, res) => {
+    try {
+        const requests = await RequestContent.find()
+            .populate("user", "ownerName businessName email contactInfo industry city")
+            .sort({ createdAt: -1 });
+
+        return res.json({
+            success: true,
+            message: "All content requests fetched successfully",
+            data: requests,
+        });
+
+    } catch (err) {
+        console.error("GET CONTENT REQUEST ERROR:", err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 };
 
