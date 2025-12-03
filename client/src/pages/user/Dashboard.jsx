@@ -24,15 +24,30 @@ const Dashboard = () => {
       if (res.data.success) {
         const { membership, totalStudyMaterials, completedMaterials, percent } = res.data;
 
+        // ✅ Format Valid Till
         const formattedValidTill = membership?.validTill
           ? new Date(membership.validTill).toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
           : "Not Available";
 
-        setMembership({ ...membership, formattedValidTill });
+        // ✅ Format Purchase Date
+        const formattedPurchaseDate = membership?.purchaseDate
+          ? new Date(membership.purchaseDate).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "Not Available";
+
+        // Save in state
+        setMembership({
+          ...membership,
+          formattedValidTill,
+          formattedPurchaseDate,
+        });
 
         // This dashboard is for study materials only
         setServices([
@@ -41,8 +56,8 @@ const Dashboard = () => {
             name: "Study Materials",
             total: totalStudyMaterials,
             completed: completedMaterials,
-            percent
-          }
+            percent,
+          },
         ]);
       }
     } catch (error) {
@@ -51,7 +66,6 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
 
   // Load dashboard on mount
   useEffect(() => {
@@ -124,9 +138,19 @@ const Dashboard = () => {
             <p className="text-gray-700">
               💰 Price: ₹{membership?.price}
             </p>
+
+            {/* ✅ Purchase Date */}
+            <p className="text-gray-700">
+              🛒 Purchased on:{" "}
+              <span className="text-blue-600 font-semibold">
+                {membership?.formattedPurchaseDate}
+              </span>
+            </p>
+
             <p className="text-gray-700">
               📅 Validity: {membership?.validityDays} days
             </p>
+
             <p className="text-gray-700">
               ⏳ Valid till:{" "}
               <span className="text-green-600 font-semibold">
@@ -184,12 +208,14 @@ const Dashboard = () => {
               </p>
             </div>
 
+            {/* 
             <button
               className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
               onClick={() => handleViewMaterial(srv)}
             >
               📘 View Materials
             </button>
+            */}
           </div>
         ))}
       </div>

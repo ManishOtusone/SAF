@@ -88,6 +88,30 @@ const AdminSidebar = () => {
               </span>}
             </NavLink>
 
+            <NavLink
+              to="/admin/content-manager"
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <BookOpen className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">Learning Contents
+              </span>}
+            </NavLink>
+
+            <NavLink
+              to="/admin/content-request"
+              end
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <MessageSquare className="w-5 h-5" />
+              {isOpen && <span className="ml-3 font-medium">Content's Requests</span>}
+            </NavLink>
+
             {/* 📚 Study Material */}
             <NavLink
               to="/admin/contentManagement"
@@ -100,17 +124,7 @@ const AdminSidebar = () => {
               {isOpen && <span className="ml-3 font-medium">Learning Content Management
               </span>}
             </NavLink>
-            <NavLink
-              to="/admin/content-request"
-              end
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
-              }
-            >
-              <MessageSquare className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Content's Requests</span>}
-            </NavLink>
+
             <NavLink
               to="/admin/enquiry"
               end

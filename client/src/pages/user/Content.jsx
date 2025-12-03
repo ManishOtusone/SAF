@@ -5,38 +5,26 @@ import { baseUrl } from "../../utils/baseUrl";
 
 const Content = () => {
   const [limit, setLimit] = useState(0);
-  const [selected, setSelected] = useState([]); 
-  const [alreadySelected, setAlreadySelected] = useState([]); 
+  const [selected, setSelected] = useState([]);
+  const [alreadySelected, setAlreadySelected] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [contentOptions, setContentOptions] = useState([]);   // ⭐ DYNAMIC CONTENT
 
-  const contentOptions = [
-    "Logo Design",
-    "Poster",
-    "Business Card",
-    "Flyer",
-    "Instagram Post",
-    "Website Banner",
-    "Brochure",
-    "Letterhead",
-    "Menu Design",
-    "Thumbnail",
-    "Pitch Deck Slide",
-    "Product Mockup",
-  ];
-
-  // Fetch membership + previous requests
+  // Fetch membership + selected content + dynamic content list
   useEffect(() => {
     (async () => {
       try {
         const token = localStorage.getItem("accessToken");
 
-        // 1️⃣ GET MEMBERSHIP LIMIT
-        const res = await axios.get(`${baseUrl}/user/dashboard`, {
+        /* ---------------------------------------------
+           1️⃣ GET USER MEMBERSHIP LIMIT
+        ---------------------------------------------- */
+        const dashboardRes = await axios.get(`${baseUrl}/user/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (res.data.success) {
-          const membership = res.data.membership;
+        if (dashboardRes.data.success) {
+          const membership = dashboardRes.data.membership;
 
           if (membership?.contentLimit > 0) {
             setLimit(membership.contentLimit);
@@ -49,7 +37,9 @@ const Content = () => {
           }
         }
 
-        // 2️⃣ CHECK IF USER ALREADY SELECTED CONTENT BEFORE
+        /* ---------------------------------------------
+           2️⃣ CHECK IF USER ALREADY SELECTED CONTENT
+        ---------------------------------------------- */
         const oldReq = await axios.get(`${baseUrl}/user/my-requested-content`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -59,29 +49,43 @@ const Content = () => {
           setAlreadySelected(prev);
         }
 
+        /* ---------------------------------------------
+           3️⃣ GET DYNAMIC CONTENT FROM BACKEND
+           GET /user/content-options
+        ---------------------------------------------- */
+        const contentRes = await axios.get(`${baseUrl}/user/content-options`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (contentRes.data.success) {
+          // Backend returns array of objects → [{ _id, name, isActive }]
+          setContentOptions(contentRes.data.data);
+        }
+
         setLoading(false);
       } catch (err) {
-        console.log("Error:", err);
+        console.log("ERROR:", err);
         setLoading(false);
       }
     })();
   }, []);
 
   // Handle checkbox selection
-  const handleCheck = (service) => {
-    // If user already selected max (limit reached)
+  const handleCheck = (serviceName) => {
     if (alreadySelected.length === limit) return;
 
-    // Make sure user can't add more than limit
-    if (selected.length >= limit - alreadySelected.length && !selected.includes(service)) {
+    if (
+      selected.length >= limit - alreadySelected.length &&
+      !selected.includes(serviceName)
+    ) {
       toast.error(`You can select only ${limit} content items in your membership.`);
       return;
     }
 
-    if (selected.includes(service)) {
-      setSelected(selected.filter((s) => s !== service));
+    if (selected.includes(serviceName)) {
+      setSelected(selected.filter((s) => s !== serviceName));
     } else {
-      setSelected([...selected, service]);
+      setSelected([...selected, serviceName]);
     }
   };
 
@@ -124,23 +128,24 @@ const Content = () => {
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {contentOptions.map((item, index) => {
-          const isOld = alreadySelected.includes(item);
+        {contentOptions.map((item) => {
+          const name = item.name; // ⭐ dynamic
+          const isOld = alreadySelected.includes(name);
           const disabled = selectionLocked || isOld;
 
           return (
             <label
-              key={index}
+              key={item._id}
               className={`flex items-center gap-2 p-2 border rounded 
               ${disabled ? "bg-gray-200 opacity-60 cursor-not-allowed" : ""}`}
             >
               <input
                 type="checkbox"
-                checked={isOld || selected.includes(item)}
+                checked={isOld || selected.includes(name)}
                 disabled={disabled}
-                onChange={() => handleCheck(item)}
+                onChange={() => handleCheck(name)}
               />
-              {item}
+              {name}
             </label>
           );
         })}

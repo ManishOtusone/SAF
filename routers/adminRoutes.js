@@ -7,7 +7,11 @@ const {
     createMembership, getAllMemberships, assignMembership, getAllUsers,
     getMembershipData, saveMembershipData, uploadServiceContent,
     getAllEnquiries, deleteEnquiry, getAllReferrals, updateReferralStatus,
-    getAllContentRequests
+    getAllContentRequests,
+    createContentService,
+    getAllContentServices,
+    updateContentService,
+    deleteContentService
 } = require("../controllers/adminController");
 // const { getAllRequests } = require("../controllers/contentRequest");
 
@@ -39,5 +43,10 @@ router.get("/content-requests", protect, authorizeRoles("admin"), getAllContentR
 
 /* CONTENT REQUEST ROUTES */
 // router.get("/get-all-request", protect, authorizeRoles("admin"), getAllRequests);
+
+router.post("/upload-content", protect, authorizeRoles("admin"), createContentService);
+router.get("/get-all-content", protect, authorizeRoles("admin"), getAllContentServices);
+router.patch("/update-content/:id", protect, authorizeRoles("admin"), updateContentService);
+router.delete("/delete-content/:id", protect, authorizeRoles("admin"), deleteContentService);
 
 module.exports = router;

@@ -19,6 +19,7 @@ import AllReferalls from "./pages/admin/AllReferalls";
 import Referalls from "./pages/user/Referalls";
 import Contents from "./pages/user/Content";
 import RequestedContents from "./pages/admin/RequestedContents";
+import AdminContentManager from "./pages/admin/AdminContentManager";
 
 function App() {
   function PrivateRoute({ children, roleRequired }) {
@@ -79,6 +80,8 @@ function App() {
             <Route path="enquiry" element={<AdminEnquiry />} />
             <Route path="allReferalls" element={<AllReferalls />} />
             <Route path="content-request" element={<RequestedContents />} />
+            <Route path="content-manager" element={<AdminContentManager />} />
+
             
 
 

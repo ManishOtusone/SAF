@@ -12,7 +12,8 @@ const {
     getMyReferrals,
     createRequestContent,
     getMyRequestedContent,
-    markStudyMaterialComplete,   // ⭐ IMPORT THIS
+    markStudyMaterialComplete,
+    getActiveContentForUser,   // ⭐ IMPORT THIS
 } = require("../controllers/userController");
 
 const {
@@ -51,6 +52,9 @@ router.get("/my-referrals", protect, getMyReferrals);
 router.post("/request-content", protect, createRequestContent);
 router.get("/my-requested-content", protect, getMyRequestedContent);
 router.get("/getDefaultMembershipsPlans",getMembershipData);
+
+router.get("/content-options" , getActiveContentForUser);
+
 
 
 module.exports = router;

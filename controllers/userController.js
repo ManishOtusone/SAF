@@ -1,3 +1,5 @@
+const ContentService = require("../models/ContentService");
+
 const User = require("../models/User");
 const Service = require("../models/Service");
 const Membership = require("../models/Membership");
@@ -94,18 +96,62 @@ exports.updateContentProgress = async (req, res) => {
 };
 
 // Update the dashboard controller to include completed content IDs
+// exports.getDashboard = async (req, res) => {
+//     try {
+//         const user = await User.findById(req.user.id)
+//             .populate("membership")
+//             .select("membership validTill userContents userCompletedContents"); // ⭐ FIX HERE
+
+//         if (!user) {
+//             return res.status(404).json({ success: false, message: "User not found" });
+//         }
+
+//         const totalStudyMaterials = user.userContents.length;
+//         const completedMaterials = user.userCompletedContents.length;
+
+//         const percent =
+//             totalStudyMaterials > 0
+//                 ? Math.round((completedMaterials / totalStudyMaterials) * 100)
+//                 : 0;
+
+//         return res.json({
+//             success: true,
+
+//             membership: {
+//                 ...user.membership.toObject(),
+//                 validTill: user.validTill  // ⭐ validTill now available
+//             },
+
+//             totalStudyMaterials,
+//             completedMaterials,
+//             percent,
+//             studyMaterials: user.userContents,
+//             completedList: user.userCompletedContents
+//         });
+
+//     } catch (error) {
+//         console.error("Dashboard Error:", error);
+//         return res.status(500).json({ success: false, message: "Internal server error" });
+//     }
+// };
+
 exports.getDashboard = async (req, res) => {
     try {
         const user = await User.findById(req.user.id)
             .populate("membership")
-            .select("membership validTill userContents userCompletedContents"); // ⭐ FIX HERE
+            .select("membership validTill userContents purchaseDate userCompletedContents");
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
         const totalStudyMaterials = user.userContents.length;
-        const completedMaterials = user.userCompletedContents.length;
+        let completedMaterials = user.userCompletedContents.length;
+
+        // ⭐⭐ FIX: Prevent completed > total
+        if (completedMaterials > totalStudyMaterials) {
+            completedMaterials = totalStudyMaterials;
+        }
 
         const percent =
             totalStudyMaterials > 0
@@ -117,11 +163,12 @@ exports.getDashboard = async (req, res) => {
 
             membership: {
                 ...user.membership.toObject(),
-                validTill: user.validTill  // ⭐ validTill now available
+                validTill: user.validTill,
+                purchaseDate: user.purchaseDate 
             },
 
             totalStudyMaterials,
-            completedMaterials,
+            completedMaterials, // ⭐ FIX APPLIED
             percent,
             studyMaterials: user.userContents,
             completedList: user.userCompletedContents
@@ -251,7 +298,8 @@ exports.assignMembership = async (req, res) => {
             userId,
             {
                 membership: membership._id,
-                validTill
+                validTill,
+                purchaseDate: new Date()
             },
             { new: true }
         ).populate("membership");
@@ -393,6 +441,22 @@ exports.getMyRequestedContent = async (req, res) => {
 
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+
+exports.getActiveContentForUser = async (req, res) => {
+    try {
+        const services = await ContentService.find({ isActive: true }).sort("name");
+
+        return res.json({
+            success: true,
+            data: services,
+        });
+
+    } catch (error) {
+        console.log("User Content Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
 };
 

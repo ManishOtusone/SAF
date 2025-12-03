@@ -40,6 +40,8 @@ const userSchema = new mongoose.Schema({
             completedAt: { type: Date, default: Date.now },
         }
     ],
+    purchaseDate: { type: Date, default: null },
+
 
     membership: { type: mongoose.Schema.Types.ObjectId, ref: "Membership", default: null },
     validTill: { type: Date, default: null },

@@ -8,6 +8,8 @@ const Enquiry = require("../models/enquirySchema");
 const Referral = require("../models/referralSchema");
 const path = require("path");
 const RequestContent = require("../models/requestContentModel");
+const ContentService = require("../models/ContentService.js");
+
 
 
 
@@ -509,6 +511,104 @@ exports.getAllContentRequests = async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 };
+
+
+
+/* ------------------------ CREATE ------------------------ */
+/* ------------------------ CREATE CONTENT ------------------------ */
+exports.createContentService = async (req, res) => {
+    try {
+        const { name } = req.body;
+
+        if (!name)
+            return res.status(400).json({ success: false, message: "Name is required" });
+
+        const exists = await ContentService.findOne({ name });
+        if (exists)
+            return res.status(400).json({ success: false, message: "Content already exists" });
+
+        const service = await ContentService.create({ name });
+
+        return res.json({
+            success: true,
+            message: "Content created successfully",
+            service,
+        });
+
+    } catch (error) {
+        console.log("Create Content Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+/* ------------------------ READ CONTENT ------------------------ */
+exports.getAllContentServices = async (req, res) => {
+    try {
+        const services = await ContentService.find().sort({ createdAt: -1 });
+
+        return res.json({
+            success: true,
+            data: services,
+        });
+
+    } catch (error) {
+        console.log("Get Content Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+/* ------------------------ UPDATE CONTENT ------------------------ */
+exports.updateContentService = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, isActive } = req.body;
+
+        const updated = await ContentService.findByIdAndUpdate(
+            id,
+            { name, isActive },
+            { new: true }
+        );
+
+        if (!updated)
+            return res.status(404).json({ success: false, message: "Content not found" });
+
+        return res.json({
+            success: true,
+            message: "Content updated successfully",
+            updated,
+        });
+
+    } catch (error) {
+        console.log("Update Content Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+/* ------------------------ DELETE CONTENT ------------------------ */
+exports.deleteContentService = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deleted = await ContentService.findByIdAndDelete(id);
+
+        if (!deleted)
+            return res.status(404).json({ success: false, message: "Content not found" });
+
+        return res.json({
+            success: true,
+            message: "Content deleted successfully",
+        });
+
+    } catch (error) {
+        console.log("Delete Content Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
 
 
 
