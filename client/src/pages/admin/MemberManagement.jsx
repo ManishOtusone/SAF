@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {baseUrl} from '../../utils/baseUrl'
+import { baseUrl } from '../../utils/baseUrl'
 import toast from "react-hot-toast";
 
 const MemberManagement = () => {
@@ -22,7 +22,7 @@ const MemberManagement = () => {
   const fetchMembers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken"); 
+      const token = localStorage.getItem("accessToken");
       const res = await axios.get(`${baseUrl}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -74,7 +74,6 @@ const MemberManagement = () => {
     setEditingMember(null);
   };
 
-  // 🔹 Update member (future enhancement)
   const handleSave = async () => {
     if (
       !formData.email ||
@@ -87,14 +86,43 @@ const MemberManagement = () => {
       return;
     }
 
-    if (editingMember) {
-      toast.success("Member updated (mock)");
-    } else {
-      toast.success("New member added (mock)");
-    }
+    try {
+      const token = localStorage.getItem("accessToken");
 
-    closeModal();
+      if (editingMember) {
+        const res = await axios.patch(
+          `${baseUrl}/admin/users/${editingMember._id}`,
+          {
+            email: formData.email,
+            businessName: formData.businessName,
+            ownerName: formData.ownerName,
+            industry: formData.industry,
+            contactInfo: formData.contactInfo,
+            gstOrPan: formData.gstPan,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (res.data.success) {
+          toast.success("Member updated successfully");
+          fetchMembers(); 
+          closeModal();
+        } else {
+          toast.error("Update failed");
+        }
+      } else {
+        toast.error("Add member API not implemented yet");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong");
+    }
   };
+
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">

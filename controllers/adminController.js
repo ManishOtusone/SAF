@@ -13,7 +13,6 @@ const ContentService = require("../models/ContentService.js");
 
 
 
-// Create new service
 exports.createService = async (req, res) => {
     try {
         const service = await Service.create(req.body);
@@ -23,7 +22,6 @@ exports.createService = async (req, res) => {
     }
 };
 
-// Update service
 exports.updateService = async (req, res) => {
     try {
         const service = await Service.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -33,7 +31,6 @@ exports.updateService = async (req, res) => {
     }
 };
 
-// Get all services
 exports.getAllServices = async (req, res) => {
     try {
         const services = await Service.find();
@@ -43,7 +40,6 @@ exports.getAllServices = async (req, res) => {
     }
 };
 
-// Create membership plan
 exports.createMembership = async (req, res) => {
     try {
         const membership = await Membership.create(req.body);
@@ -53,16 +49,14 @@ exports.createMembership = async (req, res) => {
     }
 };
 
-// Get all memberships
 exports.getAllMemberships = async (req, res) => {
     try {
         const memberships = await Membership.find()
             .populate({
                 path: "allowedServices",
-                select: "name description planContents", // only useful fields
+                select: "name description planContents",
             });
 
-        // Filter allowedServices' planContents according to each membership's planName
         const filteredMemberships = memberships.map(membership => {
             const membershipObj = membership.toObject();
             const planName = membershipObj.planName; // "Startup", "GrowthStage", "MatureStage"
@@ -100,7 +94,6 @@ exports.getAllMemberships = async (req, res) => {
 
 
 
-// Assign membership to user (admin action)
 exports.assignMembership = async (req, res) => {
     try {
         const { membershipId } = req.body;
@@ -142,7 +135,6 @@ exports.assignMembership = async (req, res) => {
 
 
 
-// Get all users
 exports.getAllUsers = async (req, res) => {
     try {
         // Fetch all users and populate membership + nested allowed services
@@ -191,9 +183,51 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
+exports.updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            {
+                email: req.body.email,
+                businessName: req.body.businessName,
+                ownerName: req.body.ownerName,
+                industry: req.body.industry,
+                contactInfo: req.body.contactInfo,
+                gstOrPan: req.body.gstOrPan,
+            },
+            { new: true, runValidators: true }
+        ).populate({
+            path: "membership",
+            populate: {
+                path: "allowedServices",
+                select: "name description planContents",
+            },
+        });
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "User updated successfully",
+            user: updatedUser,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
 
 
-// ✅ Get all membership plan data
+
 exports.getMembershipData = async (req, res) => {
     try {
         const data = await MembershipBenefit.findOne(); // single record pattern
@@ -514,8 +548,6 @@ exports.getAllContentRequests = async (req, res) => {
 
 
 
-/* ------------------------ CREATE ------------------------ */
-/* ------------------------ CREATE CONTENT ------------------------ */
 exports.createContentService = async (req, res) => {
     try {
         const { name } = req.body;
@@ -541,8 +573,6 @@ exports.createContentService = async (req, res) => {
     }
 };
 
-
-/* ------------------------ READ CONTENT ------------------------ */
 exports.getAllContentServices = async (req, res) => {
     try {
         const services = await ContentService.find().sort({ createdAt: -1 });
@@ -559,7 +589,7 @@ exports.getAllContentServices = async (req, res) => {
 };
 
 
-/* ------------------------ UPDATE CONTENT ------------------------ */
+
 exports.updateContentService = async (req, res) => {
     try {
         const { id } = req.params;
@@ -587,7 +617,6 @@ exports.updateContentService = async (req, res) => {
 };
 
 
-/* ------------------------ DELETE CONTENT ------------------------ */
 exports.deleteContentService = async (req, res) => {
     try {
         const { id } = req.params;

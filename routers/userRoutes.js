@@ -13,7 +13,7 @@ const {
     createRequestContent,
     getMyRequestedContent,
     markStudyMaterialComplete,
-    getActiveContentForUser,   // ⭐ IMPORT THIS
+    getActiveContentForUser,   
 } = require("../controllers/userController");
 
 const {
@@ -23,32 +23,24 @@ const {
 
 const router = express.Router();
 
-/* DASHBOARD */
 router.get("/dashboard", protect, getDashboard);
 
-/* PROGRESS TRACKING */
 router.post("/update-content-progress", protect, updateContentProgress);
-router.post("/complete-study-material", protect, markStudyMaterialComplete);   // ⭐ FIXED
+router.post("/complete-study-material", protect, markStudyMaterialComplete);   
 
-/* MEMBERSHIP */
 router.get("/getMembershipsPlans", protect, getMembershipData);
 router.post("/assignMembership/:membershipId", protect, assignMembership);
 router.get("/allMemberships", protect, getAllMemberships);
 
-/* USER DATA */
 router.get("/getAllUserDetails", protect, getFullUserDetails);
 
-/* STUDY MATERIALS */
-router.get("/study-materials", protect, getStudyMaterialsForUser);  // ⭐ Only once
+router.get("/study-materials", protect, getStudyMaterialsForUser);  
 
-/* ENQUIRY */
 router.post("/createEnquiry", protect, createEnquiry);
 
-/* REFERRAL */
 router.post("/create", protect, createReferral);
 router.get("/my-referrals", protect, getMyReferrals);
 
-/* CONTENT REQUEST */
 router.post("/request-content", protect, createRequestContent);
 router.get("/my-requested-content", protect, getMyRequestedContent);
 router.get("/getDefaultMembershipsPlans",getMembershipData);
