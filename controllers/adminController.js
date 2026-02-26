@@ -137,34 +137,34 @@ exports.assignMembership = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
     try {
-        // Fetch all users and populate membership + nested allowed services
         const users = await User.find()
+            .select("email businessName ownerName industry contactInfo gstOrPan membership validTill purchaseDate") // ✅ ADD purchaseDate
             .populate({
                 path: "membership",
                 populate: {
                     path: "allowedServices",
-                    select: "name description planContents", // optional
+                    select: "name description planContents",
                 },
             });
 
-        // Filter planContents according to each user's membership plan
         const filteredUsers = users.map(user => {
             const userObj = user.toObject();
 
-            const planName = userObj?.membership?.planName; // "Startup", "GrowthStage", or "MatureStage"
+            const planName = userObj?.membership?.planName;
 
             if (planName && userObj.membership?.allowedServices) {
-                userObj.membership.allowedServices = userObj.membership.allowedServices.map(service => {
-                    const filteredService = { ...service };
+                userObj.membership.allowedServices =
+                    userObj.membership.allowedServices.map(service => {
+                        const filteredService = { ...service };
 
-                    if (filteredService.planContents) {
-                        filteredService.planContents = {
-                            [planName]: filteredService.planContents[planName] || [],
-                        };
-                    }
+                        if (filteredService.planContents) {
+                            filteredService.planContents = {
+                                [planName]: filteredService.planContents[planName] || [],
+                            };
+                        }
 
-                    return filteredService;
-                });
+                        return filteredService;
+                    });
             }
 
             return userObj;
@@ -175,6 +175,7 @@ exports.getAllUsers = async (req, res) => {
             count: filteredUsers.length,
             users: filteredUsers,
         });
+
     } catch (err) {
         res.status(500).json({
             success: false,
@@ -182,7 +183,6 @@ exports.getAllUsers = async (req, res) => {
         });
     }
 };
-
 exports.updateUser = async (req, res) => {
     try {
         const { id } = req.params;

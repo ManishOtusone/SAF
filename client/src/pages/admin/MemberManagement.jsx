@@ -143,8 +143,8 @@ const MemberManagement = () => {
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">GST/PAN</th>
               <th className="px-4 py-3">Plan</th>
+              <th className="px-4 py-3">Purchase Date</th>
               <th className="px-4 py-3">Validity</th>
-              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -169,6 +169,17 @@ const MemberManagement = () => {
                   <td className="px-4 py-3 font-medium">
                     {member.membership ? member.membership.planName : "—"}
                   </td>
+
+                  <td className="px-4 py-3">
+                    {member.purchaseDate
+                      ? new Date(member.purchaseDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                      : "—"}
+                  </td>
+
                   <td className="px-4 py-3">
                     {member.validTill
                       ? new Date(member.validTill).toLocaleDateString("en-IN", {
