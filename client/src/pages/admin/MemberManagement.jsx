@@ -18,7 +18,6 @@ const MemberManagement = () => {
     gstPan: "",
   });
 
-  // 🔹 Fetch all members from backend
   const fetchMembers = async () => {
     try {
       setLoading(true);
@@ -44,7 +43,6 @@ const MemberManagement = () => {
     fetchMembers();
   }, []);
 
-  // 🔹 Modal control
   const openModal = (member = null) => {
     setEditingMember(member);
     if (member) {
@@ -109,7 +107,7 @@ const MemberManagement = () => {
 
         if (res.data.success) {
           toast.success("Member updated successfully");
-          fetchMembers(); 
+          fetchMembers();
           closeModal();
         } else {
           toast.error("Update failed");
@@ -172,8 +170,12 @@ const MemberManagement = () => {
                     {member.membership ? member.membership.planName : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {member.membership
-                      ? `${member.membership.validityDays} days`
+                    {member.validTill
+                      ? new Date(member.validTill).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
