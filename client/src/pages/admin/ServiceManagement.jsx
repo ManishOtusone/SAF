@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { baseUrl } from "../../utils/baseUrl";
+import Swal from "sweetalert2";
 
 const DEFAULT_PLANS = [
   { name: "Startup", price: "" },
@@ -19,7 +20,6 @@ const ServiceManagement = () => {
     matured: "",
   });
 
-  // ✅ Fetch Membership Plans & Services
   useEffect(() => {
     const fetchMembershipData = async () => {
       setLoading(true);
@@ -32,7 +32,6 @@ const ServiceManagement = () => {
         if (res.data.success) {
           const data = res.data.data || {};
 
-          // Plans
           const backendPlans = data.plans || [];
           const fixedPlans = DEFAULT_PLANS.map((defaultPlan, index) => {
             const match = backendPlans[index] || {};
@@ -43,7 +42,6 @@ const ServiceManagement = () => {
           });
           setPlans(fixedPlans);
 
-          // Services (WITHOUT LINK)
           setServices(
             (data.benefits || []).map((b, index) => ({
               id: `${b.name}-${index}-${Date.now()}`,
@@ -64,23 +62,26 @@ const ServiceManagement = () => {
     fetchMembershipData();
   }, []);
 
-  // Edit service value
   const handleEdit = (index, field, value) => {
     setServices((prev) =>
       prev.map((srv, i) => (i === index ? { ...srv, [field]: value } : srv))
     );
   };
 
-  // Edit plan value
   const handlePlanEdit = (index, field, value) => {
     const updated = [...plans];
     updated[index][field] = value;
     setPlans(updated);
   };
 
-  // Add new service
   const handleAdd = () => {
-    if (!newService.name.trim()) return;
+    if (!newService.name.trim()) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Service Name Required",
+        text: "Please enter service name",
+      });
+    }
 
     const newEntry = {
       ...newService,
@@ -95,18 +96,62 @@ const ServiceManagement = () => {
       growth: "",
       matured: "",
     });
+
+    Swal.fire({
+      icon: "success",
+      title: "Service Added",
+      timer: 1200,
+      showConfirmButton: false,
+    });
   };
 
-  // Delete service
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
+    const result = await Swal.fire({
+      title: "Delete Service?",
+      text: "This benefit will be removed from membership.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Delete",
+    });
+
+    if (!result.isConfirmed) return;
+
     setServices((prev) => prev.filter((_, i) => i !== index));
+
+    Swal.fire({
+      icon: "success",
+      title: "Deleted!",
+      timer: 1200,
+      showConfirmButton: false,
+    });
   };
 
-  // Save updated data
   const handleSave = async () => {
+    const confirmResult = await Swal.fire({
+      title: "Save Changes?",
+      text: "This will update membership plans & benefits.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Save",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
     try {
       setLoading(true);
       const token = localStorage.getItem("accessToken");
+
+      Swal.fire({
+        title: "Saving...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
       const payload = {
         plans,
@@ -116,24 +161,47 @@ const ServiceManagement = () => {
         })),
       };
 
-      const res = await axios.post(`${baseUrl}/admin/edit-membership`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.post(
+        `${baseUrl}/admin/edit-membership`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-      alert(res.data.success ? "Membership updated successfully!" : "Failed to update.");
+      Swal.close();
+
+      if (res.data.success) {
+        await Swal.fire({
+          icon: "success",
+          title: "Updated Successfully!",
+          text: "Membership updated successfully.",
+          confirmButtonColor: "#16a34a",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Update Failed",
+          text: "Failed to update membership.",
+        });
+      }
     } catch (err) {
-      console.error("Error updating membership:", err);
-      alert("Error while saving changes.");
+      Swal.close();
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error while saving changes.",
+      });
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Service Management</h1>
 
-      {/* Plans */}
       <div className="flex flex-wrap gap-4 mb-6">
         {plans.map((plan, index) => (
           <div
@@ -161,7 +229,6 @@ const ServiceManagement = () => {
         ))}
       </div>
 
-      {/* Services Table */}
       <div className="overflow-x-auto bg-white shadow-md rounded-lg border">
         <table className="min-w-full border-collapse text-sm">
           <thead>
@@ -227,7 +294,6 @@ const ServiceManagement = () => {
               </tr>
             ))}
 
-            {/* Add New */}
             <tr className="bg-gray-50">
               <td className="p-2 border text-center">+</td>
 
@@ -292,7 +358,6 @@ const ServiceManagement = () => {
         </table>
       </div>
 
-      {/* Save Button */}
       <div className="mt-6 text-right">
         <button
           onClick={handleSave}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { baseUrl } from "../../utils/baseUrl";
+import Swal from "sweetalert2";
 
 const MembershipPlans = () => {
   const [plans, setPlans] = useState([]);
@@ -19,17 +20,14 @@ const MembershipPlans = () => {
       try {
         const token = localStorage.getItem("accessToken");
 
-        // Fetch plans + benefits
         const plansRes = await axios.get(`${baseUrl}/user/getMembershipsPlans`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Fetch membership IDs
         const membershipsRes = await axios.get(`${baseUrl}/user/allMemberships`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Fetch user active plan
         const userRes = await axios.get(`${baseUrl}/user/getAllUserDetails`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -37,7 +35,6 @@ const MembershipPlans = () => {
         if (plansRes.data.success) {
           const { plans, benefits } = plansRes.data.data;
 
-          // ✅ Set plans
           setPlans(
             plans.map((p) => ({
               label: p.name.toUpperCase(),
@@ -45,7 +42,6 @@ const MembershipPlans = () => {
             }))
           );
 
-          // ✅ Use link instead of pdfUrl
           setBenefits(
             benefits.map((b) => ({
               name: b.name,
@@ -75,12 +71,10 @@ const MembershipPlans = () => {
   const normalizePlan = (p) => {
     if (!p) return "";
 
-    // Convert UI labels like "MATURED" → "mature"
     if (p.includes("MATURE")) return "mature";
     if (p.includes("GROWTH")) return "growth";
     if (p.includes("START")) return "startup";
 
-    // Convert backend names like "MatureStage" → "mature"
     if (p === "MatureStage") return "mature";
     if (p === "GrowthStage") return "growth";
     if (p === "StartupStage") return "startup";
@@ -94,46 +88,78 @@ const MembershipPlans = () => {
   };
 
   const handlePayment = async () => {
-    setIsPaying(true);
+    const confirmResult = await Swal.fire({
+      title: "Confirm Payment?",
+      text: `Proceed with ${selectedPlan} plan purchase?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#ca8a04",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Pay",
+    });
 
-    setTimeout(async () => {
-      alert("✅ Payment successful!");
-      setIsPaying(false);
-      setShowPaymentModal(false);
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      setIsPaying(true);
+
+      Swal.fire({
+        title: "Processing Payment...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       await assignMembership(selectedPlan);
-    }, 1500);
+
+      Swal.close();
+
+      await Swal.fire({
+        icon: "success",
+        title: "Payment Successful!",
+        text: `${selectedPlan} plan activated successfully.`,
+        confirmButtonColor: "#16a34a",
+      });
+
+      setShowPaymentModal(false);
+      window.location.reload();
+
+    } catch (error) {
+      Swal.close();
+      Swal.fire({
+        icon: "error",
+        title: "Payment Failed",
+        text: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const assignMembership = async (planLabel) => {
-    try {
-      const token = localStorage.getItem("accessToken");
+    const token = localStorage.getItem("accessToken");
 
-      let planName = "";
-      if (planLabel.includes("START")) planName = "Startup";
-      else if (planLabel.includes("GROWTH")) planName = "GrowthStage";
-      else if (planLabel.includes("MATURE")) planName = "MatureStage";
+    let planName = "";
+    if (planLabel.includes("START")) planName = "Startup";
+    else if (planLabel.includes("GROWTH")) planName = "GrowthStage";
+    else if (planLabel.includes("MATURE")) planName = "MatureStage";
 
-      const matchedMembership = memberships.find(
-        (m) => m.planName === planName
-      );
+    const matchedMembership = memberships.find(
+      (m) => m.planName === planName
+    );
 
-      if (!matchedMembership) {
-        alert(`No membership found for ${planLabel}`);
-        return;
-      }
-
-      const res = await axios.post(
-        `${baseUrl}/user/assignMembership/${matchedMembership._id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      alert(res.data.message || "Membership assigned successfully!");
-    } catch (error) {
-      console.error("Error assigning membership:", error);
-      alert("Error assigning membership. Please try again.");
+    if (!matchedMembership) {
+      throw new Error("Membership not found");
     }
+
+    await axios.post(
+      `${baseUrl}/user/assignMembership/${matchedMembership._id}`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
   };
 
   if (loading)
@@ -247,8 +273,8 @@ const MembershipPlans = () => {
               onClick={handlePayment}
               disabled={isPaying}
               className={`w-full py-2 rounded-lg text-white font-semibold ${isPaying
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-yellow-600 hover:bg-yellow-700"
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-yellow-600 hover:bg-yellow-700"
                 }`}
             >
               {isPaying ? "Processing..." : "Pay Now"}

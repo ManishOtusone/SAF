@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { Trash2, Loader2 } from "lucide-react";
 import { baseUrl } from "../../utils/baseUrl";
 
@@ -21,7 +21,12 @@ const Enquiry = () => {
 
             setEnquiries(res.data.enquiries || []);
         } catch (error) {
-            toast.error("Failed to fetch enquiries.");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Failed to fetch enquiries.",
+            });
+
             console.error(error);
         } finally {
             setLoading(false);
@@ -32,9 +37,18 @@ const Enquiry = () => {
         fetchEnquiries();
     }, []);
 
-    // ✅ Delete enquiry
     const deleteEnquiry = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this enquiry?")) return;
+        const result = await Swal.fire({
+            title: "Are you sure?",
+            text: "This enquiry will be permanently deleted!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+        });
+
+        if (!result.isConfirmed) return;
 
         try {
             const res = await axios.delete(
@@ -46,21 +60,31 @@ const Enquiry = () => {
                 }
             );
 
-            toast.success(res.data.message || "Enquiry deleted!");
+            await Swal.fire({
+                icon: "success",
+                title: "Deleted!",
+                text: res.data.message || "Enquiry deleted successfully!",
+                confirmButtonColor: "#16a34a",
+            });
+
             setEnquiries(enquiries.filter((e) => e._id !== id));
+
         } catch (error) {
-            toast.error("Failed to delete enquiry.");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Failed to delete enquiry.",
+            });
             console.error(error);
         }
     };
-
+    
     return (
         <div className="p-5 sm:p-10">
             <h1 className="text-2xl font-bold text-gray-800 mb-6">
                 All Enquiries
             </h1>
 
-            {/* ✅ Loading State */}
             {loading ? (
                 <div className="flex justify-center items-center py-20">
                     <Loader2 className="animate-spin text-yellow-600" size={32} />
@@ -78,7 +102,6 @@ const Enquiry = () => {
                                 <th className="px-4 py-3">User Name</th>
                                 <th className="px-4 py-3">Phone</th>
 
-                                {/* ✅ Description Column Widened */}
                                 <th className="px-4 py-3 w-[40%]">Description</th>
 
                                 <th className="px-4 py-3 text-center">Actions</th>

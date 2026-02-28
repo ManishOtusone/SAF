@@ -10,9 +10,6 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
-  // -------------------------
-  // FETCH DASHBOARD DATA
-  // -------------------------
   const fetchDashboard = async () => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -24,7 +21,6 @@ const Dashboard = () => {
       if (res.data.success) {
         const { membership, totalStudyMaterials, completedMaterials, percent } = res.data;
 
-        // ✅ Format Valid Till
         const formattedValidTill = membership?.validTill
           ? new Date(membership.validTill).toLocaleDateString("en-IN", {
               day: "2-digit",
@@ -33,7 +29,6 @@ const Dashboard = () => {
             })
           : "Not Available";
 
-        // ✅ Format Purchase Date
         const formattedPurchaseDate = membership?.purchaseDate
           ? new Date(membership.purchaseDate).toLocaleDateString("en-IN", {
               day: "2-digit",
@@ -42,14 +37,12 @@ const Dashboard = () => {
             })
           : "Not Available";
 
-        // Save in state
         setMembership({
           ...membership,
           formattedValidTill,
           formattedPurchaseDate,
         });
 
-        // This dashboard is for study materials only
         setServices([
           {
             id: "study",
@@ -67,12 +60,10 @@ const Dashboard = () => {
     }
   };
 
-  // Load dashboard on mount
   useEffect(() => {
     fetchDashboard();
   }, []);
 
-  // Listen for progress events from study material page
   useEffect(() => {
     const listener = () => {
       setLoading(true);
@@ -83,13 +74,11 @@ const Dashboard = () => {
     return () => window.removeEventListener("progressUpdated", listener);
   }, []);
 
-  // Manual Refresh Button
   const refreshDashboard = () => {
     setLoading(true);
     fetchDashboard();
   };
 
-  // Handle navigation to Study Material page
   const handleViewMaterial = (srv) => {
     navigate(`/user/studyMaterial/${srv.id}`, {
       state: {
@@ -106,7 +95,6 @@ const Dashboard = () => {
     });
   };
 
-  // Overall progress calculations
   const totalCompleted = services.reduce((sum, s) => sum + s.completed, 0);
   const totalItems = services.reduce((sum, s) => sum + s.total, 0);
   const overallProgress =
@@ -122,9 +110,6 @@ const Dashboard = () => {
 
   return (
     <div className="p-6 w-full bg-gray-50 min-h-screen">
-      {/* --------------------------
-          MEMBERSHIP HEADER CARD
-      --------------------------- */}
       <div className="mb-8 bg-white rounded-xl shadow p-5 border border-green-200">
         <div className="flex justify-between flex-wrap gap-4">
           <div>
@@ -139,7 +124,6 @@ const Dashboard = () => {
               💰 Price: ₹{membership?.price}
             </p>
 
-            {/* ✅ Purchase Date */}
             <p className="text-gray-700">
               🛒 Purchased on:{" "}
               <span className="text-blue-600 font-semibold">
@@ -159,7 +143,6 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {/* OVERALL PROGRESS */}
           <div className="bg-green-50 p-4 rounded-lg border min-w-[200px]">
             <h3 className="font-semibold">Overall Progress</h3>
             <div className="text-2xl font-bold text-green-700">
@@ -185,9 +168,6 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* --------------------------
-          SERVICES SECTION
-      --------------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {services.map((srv) => (
           <div
@@ -208,14 +188,6 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {/* 
-            <button
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-              onClick={() => handleViewMaterial(srv)}
-            >
-              📘 View Materials
-            </button>
-            */}
           </div>
         ))}
       </div>

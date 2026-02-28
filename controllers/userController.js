@@ -10,9 +10,6 @@ const Enquiry = require("../models/enquirySchema");
 
 
 
-// In your dashboard controller
-// controllers/userController.js
-// Update this in your userController.js
 
 exports.updateContentProgress = async (req, res) => {
     try {

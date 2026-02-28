@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { baseUrl } from "../../utils/baseUrl";
+import Swal from "sweetalert2";
 
 const ContentManagement = () => {
   const [selectedUser, setSelectedUser] = useState("");
@@ -10,7 +11,6 @@ const ContentManagement = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -36,15 +36,46 @@ const ContentManagement = () => {
   };
 
   const handleUpload = async () => {
-    if (!selectedUser)
-      return alert("⚠️ Please select a user first!");
+    if (!selectedUser) {
+      return Swal.fire({
+        icon: "warning",
+        title: "User Required",
+        text: "Please select a user first!",
+      });
+    }
 
-    if (files.length === 0 && videoUrl.trim() === "")
-      return alert("⚠️ Upload at least 1 file OR enter a video link!");
+    if (files.length === 0 && videoUrl.trim() === "") {
+      return Swal.fire({
+        icon: "warning",
+        title: "Content Required",
+        text: "Upload at least 1 file OR enter a video link!",
+      });
+    }
+
+    const confirmResult = await Swal.fire({
+      title: "Confirm Upload",
+      text: "Are you sure you want to upload this content?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Upload",
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     try {
       setUploading(true);
       setProgress(0);
+
+      Swal.fire({
+        title: "Uploading...",
+        text: "Please wait while content is uploading",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
       const token = localStorage.getItem("accessToken");
       const formData = new FormData();
@@ -69,23 +100,41 @@ const ContentManagement = () => {
         }
       );
 
+      Swal.close();
+
       if (res.data.success) {
-        alert("✅ Upload successful!");
+        await Swal.fire({
+          icon: "success",
+          title: "Upload Successful",
+          text: "Content uploaded successfully!",
+          confirmButtonColor: "#16a34a",
+        });
+
         setFiles([]);
         setVideoUrl("");
         setSelectedUser("");
         setProgress(0);
       } else {
-        alert("❌ Upload failed.");
+        Swal.fire({
+          icon: "error",
+          title: "Upload Failed",
+          text: "Something went wrong.",
+        });
       }
+
     } catch (error) {
-      console.error(error);
-      alert("❌ Error uploading content.");
+      Swal.close();
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error uploading content.",
+      });
     } finally {
       setUploading(false);
     }
   };
 
+  
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-green-700 mb-6 border-b pb-3">
@@ -93,8 +142,7 @@ const ContentManagement = () => {
       </h1>
 
       <div className="bg-white shadow-md rounded-lg p-6 border">
-        
-        {/* Select User */}
+
         <h2 className="text-xl font-semibold mb-3">Select User</h2>
         <select
           value={selectedUser}
@@ -111,7 +159,6 @@ const ContentManagement = () => {
           ))}
         </select>
 
-        {/* Video URL */}
         <h2 className="text-xl font-semibold mb-3">Video URL (Optional)</h2>
         <input
           type="text"
@@ -121,7 +168,6 @@ const ContentManagement = () => {
           className="border rounded w-full p-2 mb-6"
         />
 
-        {/* File upload */}
         <h2 className="text-xl font-semibold mb-3">Upload Files</h2>
         <input
           type="file"
@@ -141,7 +187,6 @@ const ContentManagement = () => {
           </div>
         )}
 
-        {/* Upload progress */}
         {uploading && (
           <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
             <div
@@ -151,7 +196,6 @@ const ContentManagement = () => {
           </div>
         )}
 
-        {/* Upload button */}
         <button
           onClick={handleUpload}
           disabled={uploading}

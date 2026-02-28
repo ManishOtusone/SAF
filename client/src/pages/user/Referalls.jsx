@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { baseUrl } from "../../utils/baseUrl";
 
 const Referalls = () => {
@@ -15,7 +15,6 @@ const Referalls = () => {
   const [referrals, setReferrals] = useState([]);
   const [showForm, setShowForm] = useState(false);
 
-  // ✅ Fetch user referrals
   const fetchReferrals = async () => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -45,23 +44,75 @@ const Referalls = () => {
     const { name, contactNumber, companyName, email } = formData;
 
     if (!name || !contactNumber || !companyName || !email) {
-      toast.error("All fields are required");
-      return;
+      return Swal.fire({
+        icon: "warning",
+        title: "Missing Fields",
+        text: "All fields are required",
+      });
     }
+
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(contactNumber)) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Invalid Phone Number",
+        text: "Enter a valid 10-digit Indian mobile number",
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Invalid Email",
+        text: "Enter a valid email address",
+      });
+    }
+
+    const confirmResult = await Swal.fire({
+      title: "Submit Referral?",
+      text: "Are you sure you want to submit this referral?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#ca8a04",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Submit",
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     try {
       setLoading(true);
+
       const token = localStorage.getItem("accessToken");
+
+      Swal.fire({
+        title: "Submitting...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
       await axios.post(
         `${baseUrl}/user/create`,
-        formData,
+        {
+          ...formData,
+          contactNumber: `+91${contactNumber}`,
+        },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      toast.success("Referral submitted successfully");
+      Swal.close();
+
+      await Swal.fire({
+        icon: "success",
+        title: "Referral Submitted!",
+        text: "Your referral has been submitted successfully.",
+        confirmButtonColor: "#16a34a",
+      });
 
       setFormData({
         name: "",
@@ -74,7 +125,12 @@ const Referalls = () => {
       fetchReferrals();
 
     } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+      Swal.close();
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.response?.data?.message || "Something went wrong",
+      });
     } finally {
       setLoading(false);
     }
@@ -82,8 +138,7 @@ const Referalls = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen p-6">
-      
-      {/* ✅ Page Header */}
+
       <div className="max-w-5xl mx-auto flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">My Referrals</h1>
 
@@ -95,7 +150,6 @@ const Referalls = () => {
         </button>
       </div>
 
-      {/* ✅ Referral Form */}
       {showForm && (
         <div className="max-w-5xl mx-auto bg-white p-8 rounded-xl shadow-lg mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
@@ -103,8 +157,7 @@ const Referalls = () => {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* Full Name */}
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Full Name
@@ -119,22 +172,31 @@ const Referalls = () => {
               />
             </div>
 
-            {/* Contact Number */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Contact Number
               </label>
-              <input
-                type="text"
-                name="contactNumber"
-                placeholder="Enter contact number"
-                value={formData.contactNumber}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 outline-none focus:ring-2 focus:ring-yellow-600"
-              />
-            </div>
 
-            {/* Company Name */}
+              <div className="flex items-center border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-yellow-600">
+                <span className="px-3 bg-gray-100 text-gray-700 border-r">
+                  +91
+                </span>
+
+                <input
+                  type="tel"
+                  name="contactNumber"
+                  placeholder="Enter 10-digit number"
+                  value={formData.contactNumber}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    if (value.length <= 10) {
+                      setFormData({ ...formData, contactNumber: value });
+                    }
+                  }}
+                  className="w-full px-4 py-2 outline-none"
+                />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Company Name
@@ -149,7 +211,6 @@ const Referalls = () => {
               />
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Email Address
@@ -164,15 +225,13 @@ const Referalls = () => {
               />
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-2 rounded-md text-white font-semibold transition ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-yellow-600 hover:bg-yellow-700"
-              }`}
+              className={`w-full py-2 rounded-md text-white font-semibold transition ${loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-yellow-600 hover:bg-yellow-700"
+                }`}
             >
               {loading ? "Submitting..." : "Submit Referral"}
             </button>
@@ -180,7 +239,6 @@ const Referalls = () => {
         </div>
       )}
 
-      {/* ✅ Referral List */}
       <div className="max-w-5xl mx-auto bg-white p-8 rounded-xl shadow-lg">
 
         {referrals.length === 0 ? (
@@ -206,13 +264,12 @@ const Referalls = () => {
                     <td className="p-3 border">{ref.email}</td>
 
                     <td
-                      className={`p-3 border font-semibold ${
-                        ref.status === "Approved"
-                          ? "text-green-600"
-                          : ref.status === "Rejected"
+                      className={`p-3 border font-semibold ${ref.status === "Approved"
+                        ? "text-green-600"
+                        : ref.status === "Rejected"
                           ? "text-red-600"
                           : "text-yellow-600"
-                      }`}
+                        }`}
                     >
                       {ref.status}
                     </td>

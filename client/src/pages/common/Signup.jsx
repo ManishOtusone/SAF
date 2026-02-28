@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import AuthLayout from "../../component/AuthLayout";
 import ReCAPTCHA from "react-google-recaptcha";
-import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import axios from "axios";
 import { baseUrl } from "../../utils/baseUrl";
-import {useNavigate} from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 const Signup = () => {
     const [loading, setLoading] = useState(false);
     const [captchaToken, setCaptchaToken] = useState("");
-    const navigate=useNavigate();
+    const navigate = useNavigate();
 
     const [form, setForm] = useState({
         businessName: "",
@@ -29,9 +29,23 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // ✅ Captcha validation
+        const mobileRegex = /^[6-9]\d{9}$/;
+        if (!mobileRegex.test(form.contactNumber)) {
+            return Swal.fire({
+                icon: "error",
+                title: "Invalid Mobile Number",
+                text: "Enter a valid 10-digit mobile number",
+                confirmButtonColor: "#dc2626",
+            });
+        }
+
         if (!captchaToken) {
-            return toast.error("Please verify you're not a robot");
+            return Swal.fire({
+                icon: "error",
+                title: "Captcha Required",
+                text: "Please verify you're not a robot",
+                confirmButtonColor: "#dc2626",
+            });
         }
 
         try {
@@ -41,7 +55,7 @@ const Signup = () => {
                 businessName: form.businessName,
                 ownerName: form.ownerName,
                 industry: form.industry,
-                contactInfo: form.contactNumber,
+                contactInfo: `+91${form.contactNumber}`, 
                 gstOrPan: form.gstPan,
                 city: form.city,
                 website: form.website,
@@ -50,21 +64,28 @@ const Signup = () => {
                 captchaToken,
             });
 
-            toast.success(res.data.message || "Signup successful!");
+            await Swal.fire({
+                icon: "success",
+                title: "Signup Successful",
+                text: res.data.message || "Account created successfully!",
+                confirmButtonColor: "#16a34a",
+            });
 
-            localStorage.setItem("accessToken", res.data.token);
             navigate("/login");
 
         } catch (error) {
-            console.error("Signup Error:", error);
-            toast.error(
-                error.response?.data?.message || "Signup failed. Try again."
-            );
+            Swal.fire({
+                icon: "error",
+                title: "Signup Failed",
+                text:
+                    error.response?.data?.message ||
+                    "Something went wrong. Try again.",
+                confirmButtonColor: "#dc2626",
+            });
         } finally {
             setLoading(false);
         }
     };
-
     return (
         <AuthLayout imageSrc="/Logo.png">
             <h2 className="text-3xl font-semibold mb-6 text-center">
@@ -75,7 +96,6 @@ const Signup = () => {
                 onSubmit={handleSubmit}
                 className="space-y-4 max-w-md mx-auto bg-white p-6 rounded-xl shadow-md"
             >
-                {/* Business Name */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Business Name</label>
                     <input
@@ -89,7 +109,6 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Owner Name */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Owner Name</label>
                     <input
@@ -103,7 +122,6 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Industry */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Industry</label>
                     <input
@@ -117,21 +135,34 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Contact Number */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">Contact Number</label>
-                    <input
-                        type="tel"
-                        name="contactNumber"
-                        value={form.contactNumber}
-                        onChange={handleChange}
-                        pattern="[0-9]{10}"
-                        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter 10-digit mobile number"
-                        required
-                    />
-                </div>
+                    <label className="block text-sm font-medium mb-1">
+                        Contact Number
+                    </label>
 
+                    <div className="flex items-center border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+
+                        <span className="px-3 bg-gray-100 text-gray-700 border-r">
+                            +91
+                        </span>
+
+                        <input
+                            type="tel"
+                            name="contactNumber"
+                            value={form.contactNumber}
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, "");
+                                if (value.length <= 10) {
+                                    setForm({ ...form, contactNumber: value });
+                                }
+                            }}
+                            className="w-full p-2 outline-none"
+                            placeholder="Enter 10-digit mobile number"
+                            maxLength="10"
+                            required
+                        />
+                    </div>
+                </div>
                 {/* GST / PAN */}
                 <div>
                     <label className="block text-sm font-medium mb-1">GST / PAN (optional)</label>
