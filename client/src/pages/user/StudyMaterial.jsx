@@ -19,7 +19,6 @@ const StudyMaterial = () => {
         console.log("API Response:", res.data);
 
         if (res.data.success) {
-          // ⬅️ Backend returns: studyMaterials = user.userContents
           setMaterials(res.data.studyMaterials);
           setPlan(res.data.plan);
         }
@@ -31,7 +30,6 @@ const StudyMaterial = () => {
     fetchMaterials();
   }, []);
 
-  // NEW — Open details page with contentData
   const handleClick = (item) => {
     navigate(`/user/studyMaterial/${item._id}`, {
       state: { contentData: item }

@@ -9,7 +9,6 @@ const StudyMaterialDetail = () => {
 
   if (!item) return <div className="p-6">Invalid material</div>;
 
-  // ⭐⭐⭐ AUTO-MARK AS COMPLETED HERE ⭐⭐⭐
   useEffect(() => {
     const markComplete = async () => {
       try {
@@ -21,7 +20,6 @@ const StudyMaterialDetail = () => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        // This refreshes the dashboard
         window.dispatchEvent(new Event("progressUpdated"));
       } catch (err) {
         console.log("Mark complete error", err);
@@ -30,9 +28,6 @@ const StudyMaterialDetail = () => {
 
     markComplete();
   }, [item._id]);
-  // ⭐⭐⭐ END ⭐⭐⭐
-
-  // YOUTUBE EMBED FIX
   const getEmbedUrl = (url) => {
     try {
       if (url.includes("youtu.be")) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { baseUrl } from "../../utils/baseUrl";
 
 const Content = () => {
@@ -8,17 +8,13 @@ const Content = () => {
   const [selected, setSelected] = useState([]);
   const [alreadySelected, setAlreadySelected] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [contentOptions, setContentOptions] = useState([]);   // ⭐ DYNAMIC CONTENT
+  const [contentOptions, setContentOptions] = useState([]);
 
-  // Fetch membership + selected content + dynamic content list
   useEffect(() => {
     (async () => {
       try {
         const token = localStorage.getItem("accessToken");
 
-        /* ---------------------------------------------
-           1️⃣ GET USER MEMBERSHIP LIMIT
-        ---------------------------------------------- */
         const dashboardRes = await axios.get(`${baseUrl}/user/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -37,9 +33,6 @@ const Content = () => {
           }
         }
 
-        /* ---------------------------------------------
-           2️⃣ CHECK IF USER ALREADY SELECTED CONTENT
-        ---------------------------------------------- */
         const oldReq = await axios.get(`${baseUrl}/user/my-requested-content`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -49,16 +42,11 @@ const Content = () => {
           setAlreadySelected(prev);
         }
 
-        /* ---------------------------------------------
-           3️⃣ GET DYNAMIC CONTENT FROM BACKEND
-           GET /user/content-options
-        ---------------------------------------------- */
         const contentRes = await axios.get(`${baseUrl}/user/content-options`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (contentRes.data.success) {
-          // Backend returns array of objects → [{ _id, name, isActive }]
           setContentOptions(contentRes.data.data);
         }
 
@@ -70,7 +58,6 @@ const Content = () => {
     })();
   }, []);
 
-  // Handle checkbox selection
   const handleCheck = (serviceName) => {
     if (alreadySelected.length === limit) return;
 
@@ -78,7 +65,11 @@ const Content = () => {
       selected.length >= limit - alreadySelected.length &&
       !selected.includes(serviceName)
     ) {
-      toast.error(`You can select only ${limit} content items in your membership.`);
+      Swal.fire({
+        icon: "warning",
+        title: "Selection Limit Reached",
+        text: `You can select only ${limit} content items in your membership.`,
+      });
       return;
     }
 
@@ -91,11 +82,35 @@ const Content = () => {
 
   const handleSubmit = async () => {
     if (selected.length === 0) {
-      return toast.error("Please select at least one content.");
+      return Swal.fire({
+        icon: "warning",
+        title: "No Content Selected",
+        text: "Please select at least one content.",
+      });
     }
+
+    const confirmResult = await Swal.fire({
+      title: "Confirm Selection?",
+      text: "Once submitted, your selection will be locked for this membership.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Submit",
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     try {
       const token = localStorage.getItem("accessToken");
+
+      Swal.fire({
+        title: "Submitting...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
       const res = await axios.post(
         `${baseUrl}/user/request-content`,
@@ -103,18 +118,30 @@ const Content = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      Swal.close();
+
       if (res.data.success) {
-        toast.success("Your content selection is locked for this membership!");
+        await Swal.fire({
+          icon: "success",
+          title: "Selection Locked!",
+          text: "Your content selection is locked for this membership.",
+          confirmButtonColor: "#16a34a",
+        });
 
         setAlreadySelected([...alreadySelected, ...selected]);
         setSelected([]);
       }
     } catch (err) {
+      Swal.close();
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error submitting content.",
+      });
       console.log(err);
-      toast.error("Error submitting content.");
     }
   };
-
+  
   if (loading) return <p>Loading...</p>;
 
   const selectionLocked = alreadySelected.length >= limit;
@@ -129,7 +156,7 @@ const Content = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {contentOptions.map((item) => {
-          const name = item.name; // ⭐ dynamic
+          const name = item.name;
           const isOld = alreadySelected.includes(name);
           const disabled = selectionLocked || isOld;
 

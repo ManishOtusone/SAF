@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { baseUrl } from "../../utils/baseUrl";
 
 const Enquiry = () => {
@@ -24,17 +24,58 @@ const Enquiry = () => {
 
         const { name, phone, description } = formData;
 
-        if (!name || !phone || !description)
-            return toast.error("All fields are required");
+        // Basic validation
+        if (!name || !phone || !description) {
+            return Swal.fire({
+                icon: "warning",
+                title: "Missing Fields",
+                text: "All fields are required",
+            });
+        }
+
+        // Phone validation (Indian format)
+        const mobileRegex = /^[6-9]\d{9}$/;
+        if (!mobileRegex.test(phone)) {
+            return Swal.fire({
+                icon: "warning",
+                title: "Invalid Phone Number",
+                text: "Enter a valid 10-digit mobile number",
+            });
+        }
+
+        // Confirm before submit
+        const confirmResult = await Swal.fire({
+            title: "Submit Enquiry?",
+            text: "Are you sure you want to submit this enquiry?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#ca8a04",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, Submit",
+        });
+
+        if (!confirmResult.isConfirmed) return;
 
         try {
             setLoading(true);
 
             const token = localStorage.getItem("accessToken");
 
+            Swal.fire({
+                title: "Submitting...",
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+
             const res = await axios.post(
                 `${baseUrl}/user/createEnquiry`,
-                { name, phone, description },
+                {
+                    name,
+                    phone: `+91${phone}`, 
+                    description,
+                },
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -42,17 +83,28 @@ const Enquiry = () => {
                 }
             );
 
-            toast.success(res.data.message || "Enquiry submitted successfully!");
+            Swal.close();
 
-            // Reset form
+            await Swal.fire({
+                icon: "success",
+                title: "Enquiry Submitted!",
+                text: res.data.message || "Your enquiry has been sent successfully.",
+                confirmButtonColor: "#16a34a",
+            });
+
             setFormData({ name: "", phone: "", description: "" });
 
         } catch (error) {
-            console.error("Enquiry Create Error:", error);
+            Swal.close();
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text:
+                    error.response?.data?.message ||
+                    "Failed to submit enquiry.",
+            });
 
-            toast.error(
-                error.response?.data?.message || "Failed to submit enquiry."
-            );
+            console.error("Enquiry Create Error:", error);
         } finally {
             setLoading(false);
         }
@@ -68,7 +120,6 @@ const Enquiry = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
 
-                    {/* Name */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">
                             Your Name
@@ -83,22 +134,31 @@ const Enquiry = () => {
                         />
                     </div>
 
-                    {/* Phone */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">
                             Phone Number
                         </label>
-                        <input
-                            type="text"
-                            name="phone"
-                            placeholder="Enter your phone number"
-                            className="w-full border rounded-md px-4 py-2 outline-none focus:ring-2 focus:ring-yellow-600"
-                            value={formData.phone}
-                            onChange={handleChange}
-                        />
-                    </div>
 
-                    {/* Description */}
+                        <div className="flex items-center border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-yellow-600">
+                            <span className="px-3 bg-gray-100 text-gray-700 border-r">
+                                +91
+                            </span>
+
+                            <input
+                                type="tel"
+                                name="phone"
+                                placeholder="Enter 10-digit mobile number"
+                                className="w-full px-4 py-2 outline-none"
+                                value={formData.phone}
+                                onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, "");
+                                    if (value.length <= 10) {
+                                        setFormData({ ...formData, phone: value });
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">
                             Description
@@ -113,7 +173,6 @@ const Enquiry = () => {
                         ></textarea>
                     </div>
 
-                    {/* Submit Button */}
                     <button
                         disabled={loading}
                         type="submit"

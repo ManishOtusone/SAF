@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import AuthLayout from "../../component/AuthLayout";
 import { baseUrl } from '../../utils/baseUrl'
+import Swal from "sweetalert2";
 
 const Login = () => {
     const [form, setForm] = useState({ email: "", password: "" });
@@ -15,7 +16,6 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError("");
         setLoading(true);
 
         try {
@@ -26,28 +26,43 @@ const Login = () => {
             if (response.data.success) {
                 const { token, user } = response.data;
 
-                // Save to localStorage
                 localStorage.setItem("accessToken", token);
                 localStorage.setItem("user", JSON.stringify(user));
                 localStorage.setItem("role", user.role);
 
-                alert("Login successful!");
-                if (user.role === 'admin') {
+                await Swal.fire({
+                    icon: "success",
+                    title: "Login Successful",
+                    text: "Welcome back!",
+                    confirmButtonColor: "#2563eb",
+                });
+
+                if (user.role === "admin") {
                     navigate("/admin");
                 } else {
                     navigate("/user");
                 }
 
             } else {
-                setError(response.data.message || "Login failed. Please try again.");
+                Swal.fire({
+                    icon: "error",
+                    title: "Login Failed",
+                    text: response.data.message || "Please try again",
+                    confirmButtonColor: "#dc2626",
+                });
             }
+
         } catch (err) {
-            setError(err.response?.data?.message || "Server error. Please try again.");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: err.response?.data?.message || "Server error. Please try again.",
+                confirmButtonColor: "#dc2626",
+            });
         } finally {
             setLoading(false);
         }
     };
-
 
     return (
         <AuthLayout imageSrc="/Logo.png">

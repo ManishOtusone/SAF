@@ -242,7 +242,6 @@ exports.getMembershipData = async (req, res) => {
 
 
 
-// ✅ Save or update Membership Data (with links only)
 exports.saveMembershipData = async (req, res) => {
     try {
         console.log("🧾 Body received:", req.body);
@@ -297,70 +296,6 @@ exports.saveMembershipData = async (req, res) => {
         });
     }
 };
-
-// exports.uploadServiceContent = async (req, res) => {
-//     try {
-//         const { serviceName, description } = req.body;
-//         const access = {
-//             startup: req.body["access[startup]"] === "true" || req.body["access[startup]"] === true,
-//             growth: req.body["access[growth]"] === "true" || req.body["access[growth]"] === true,
-//             matured: req.body["access[matured]"] === "true" || req.body["access[matured]"] === true,
-//         };
-
-//         const files = req.files; // Multer adds this
-
-//         // Validate inputs
-//         if (!serviceName || !files || files.length === 0) {
-//             return res
-//                 .status(400)
-//                 .json({ success: false, message: "Service name and files are required" });
-//         }
-
-//         // Find or create the service
-//         let service = await Service.findOne({ name: serviceName });
-//         if (!service) {
-//             service = new Service({
-//                 name: serviceName,
-//                 description: description || "",
-//                 planContents: { Startup: [], GrowthStage: [], MatureStage: [] },
-//             });
-//         }
-
-//         // Upload files to Cloudinary
-//         for (const file of files) {
-//             const uploaded = await cloudinary.uploader.upload(file.path, {
-//                 resource_type: "auto", // supports video or pdf
-//                 folder: "service_contents",
-//             });
-
-//             const fileType = file.mimetype.includes("video") ? "video" : "pdf";
-//             const fileData = {
-//                 title: file.originalname,
-//                 type: fileType,
-//                 url: uploaded.secure_url,
-//             };
-
-//             // Add to correct membership plans
-//             if (access.startup) service.planContents.Startup.push(fileData);
-//             if (access.growth) service.planContents.GrowthStage.push(fileData);
-//             if (access.matured) service.planContents.MatureStage.push(fileData);
-
-//             // Delete temp file after upload
-//             fs.unlinkSync(file.path);
-//         }
-
-//         await service.save();
-
-//         res.json({
-//             success: true,
-//             message: "Service content uploaded successfully",
-//             service,
-//         });
-//     } catch (error) {
-//         console.error("Error uploading content:", error);
-//         res.status(500).json({ success: false, message: "Internal server error" });
-//     }
-// };
 
 
 
@@ -635,6 +570,62 @@ exports.deleteContentService = async (req, res) => {
         console.log("Delete Content Error:", error);
         return res.status(500).json({ success: false, message: "Server error" });
     }
+};
+
+exports.onboardMember = async (req, res) => {
+  try {
+    const {
+      businessName,
+      ownerName,
+      industry,
+      contactInfo,
+      gstOrPan,
+      city,
+      website,
+      email,
+      password
+    } = req.body;
+
+    if (!businessName || !ownerName || !industry || !contactInfo || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be filled"
+      });
+    }
+
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
+
+    const user = await User.create({
+      businessName,
+      ownerName,
+      industry,
+      contactInfo,
+      gstOrPan,
+      city,
+      website,
+      email,
+      password,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Member onboarded successfully",
+      user
+    });
+
+  } catch (err) {
+    console.error("Onboard error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
 };
 
 

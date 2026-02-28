@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { baseUrl } from "../../utils/baseUrl";
 
 const AdminContentManager = () => {
@@ -12,9 +12,6 @@ const AdminContentManager = () => {
 
     const token = localStorage.getItem("accessToken");
 
-    /* ---------------------------
-        FETCH ALL CONTENT ITEMS
-    ---------------------------- */
     const fetchContent = async () => {
         try {
             const res = await axios.get(`${baseUrl}/admin/get-all-content`, {
@@ -26,7 +23,11 @@ const AdminContentManager = () => {
             }
         } catch (err) {
             console.log(err);
-            toast.error("Failed to load content options");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Failed to load content options",
+            });
         }
         setLoading(false);
     };
@@ -35,20 +36,19 @@ const AdminContentManager = () => {
         fetchContent();
     }, []);
 
-    /* ---------------------------
-        CREATE / UPDATE CONTENT
-    ---------------------------- */
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!name.trim()) {
-            toast.error("Content name is required");
-            return;
+            return Swal.fire({
+                icon: "warning",
+                title: "Content Required",
+                text: "Content name is required",
+            });
         }
 
         try {
             if (editId) {
-                // UPDATE
                 const res = await axios.patch(
                     `${baseUrl}/admin/update-content/${editId}`,
                     { name },
@@ -56,13 +56,18 @@ const AdminContentManager = () => {
                 );
 
                 if (res.data.success) {
-                    toast.success("Content updated");
+                    await Swal.fire({
+                        icon: "success",
+                        title: "Updated",
+                        text: "Content updated successfully",
+                        confirmButtonColor: "#16a34a",
+                    });
+
                     fetchContent();
                     setEditId(null);
                     setName("");
                 }
             } else {
-                // CREATE
                 const res = await axios.post(
                     `${baseUrl}/admin/upload-content`,
                     { name },
@@ -70,41 +75,65 @@ const AdminContentManager = () => {
                 );
 
                 if (res.data.success) {
-                    toast.success("Content Added");
+                    await Swal.fire({
+                        icon: "success",
+                        title: "Added",
+                        text: "Content added successfully",
+                        confirmButtonColor: "#16a34a",
+                    });
+
                     fetchContent();
                     setName("");
                 }
             }
         } catch (err) {
-            console.log(err);
-            toast.error("Error saving content");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Error saving content",
+            });
         }
     };
 
-    /* ---------------------------
-        DELETE CONTENT
-    ---------------------------- */
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this content?")) return;
+        const result = await Swal.fire({
+            title: "Are you sure?",
+            text: "This content will be permanently deleted!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+        });
+
+        if (!result.isConfirmed) return;
 
         try {
-            const res = await axios.delete(`${baseUrl}/admin/delete-content/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await axios.delete(
+                `${baseUrl}/admin/delete-content/${id}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
             if (res.data.success) {
-                toast.success("Content deleted");
+                await Swal.fire({
+                    icon: "success",
+                    title: "Deleted!",
+                    text: "Content deleted successfully",
+                    confirmButtonColor: "#16a34a",
+                });
+
                 fetchContent();
             }
         } catch (err) {
-            console.log(err);
-            toast.error("Error deleting content");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Error deleting content",
+            });
         }
     };
 
-    /* ---------------------------
-        ENABLE / DISABLE CONTENT
-    ---------------------------- */
+
     const toggleActive = async (item) => {
         try {
             const res = await axios.patch(
@@ -114,18 +143,24 @@ const AdminContentManager = () => {
             );
 
             if (res.data.success) {
-                toast.success("Status updated");
+                Swal.fire({
+                    icon: "success",
+                    title: "Updated",
+                    text: "Status updated successfully",
+                    timer: 1200,
+                    showConfirmButton: false,
+                });
+
                 fetchContent();
             }
         } catch (err) {
-            console.log(err);
-            toast.error("Error updating status");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Error updating status",
+            });
         }
     };
-
-    /* ---------------------------
-        FILL FORM FOR EDITING
-    ---------------------------- */
     const startEdit = (item) => {
         setEditId(item._id);
         setName(item.name);
@@ -137,7 +172,6 @@ const AdminContentManager = () => {
         <div className="p-6">
             <h1 className="text-2xl font-bold mb-4">Manage Content Options</h1>
 
-            {/* ------------------ FORM ------------------ */}
             <form onSubmit={handleSubmit} className="mb-6 flex gap-3 items-center">
                 <input
                     className="border p-2 rounded w-64"
@@ -164,7 +198,6 @@ const AdminContentManager = () => {
                 )}
             </form>
 
-            {/* ------------------ TABLE ------------------ */}
             <table className="w-full border">
                 <thead>
                     <tr className="bg-gray-200">
