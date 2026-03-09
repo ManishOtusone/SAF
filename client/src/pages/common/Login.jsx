@@ -4,12 +4,16 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../../component/AuthLayout";
 import { baseUrl } from '../../utils/baseUrl'
 import Swal from "sweetalert2";
+import ForgotPasswordModal from "./ForgotPasswordModal";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login = () => {
     const [form, setForm] = useState({ email: "", password: "" });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const navigate = useNavigate();
+    const [showForgot, setShowForgot] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e) =>
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -90,15 +94,35 @@ const Login = () => {
 
                 <div>
                     <label className="block text-sm font-medium">Password</label>
-                    <input
-                        type="password"
-                        name="password"
-                        value={form.password}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded mt-1 focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your password"
-                        required
-                    />
+
+                    <div className="relative">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            value={form.password}
+                            onChange={handleChange}
+                            className="w-full p-2 border rounded mt-1 focus:ring-2 focus:ring-blue-500 pr-10"
+                            placeholder="Enter your password"
+                            required
+                        />
+
+                        <span
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-4 cursor-pointer text-gray-500"
+                        >
+                            {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        </span>
+                    </div>
+
+                    <div className="text-right mt-1">
+                        <button
+                            type="button"
+                            onClick={() => setShowForgot(true)}
+                            className="text-sm text-blue-600 hover:underline"
+                        >
+                            Forgot Password?
+                        </button>
+                    </div>
                 </div>
 
                 <button
@@ -116,7 +140,13 @@ const Login = () => {
                         Sign up
                     </a>
                 </p>
+
             </form>
+
+            {showForgot && (
+                <ForgotPasswordModal onClose={() => setShowForgot(false)} />
+            )}
+
         </AuthLayout>
     );
 };
