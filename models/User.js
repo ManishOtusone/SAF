@@ -19,11 +19,12 @@ const userSchema = new mongoose.Schema({
         trim: true,
     },
     password: { type: String, required: true, minlength: 6, select: false },
+    otp: String,
+    otpExpiry: Date,
 
     role: { type: String, enum: ["user", "admin"], default: "user" },
     isVerified: { type: Boolean, default: false },
 
-    // ⭐ STUDY MATERIALS ADDED BY ADMIN
     userContents: [
         {
             title: { type: String, required: true },
@@ -33,7 +34,6 @@ const userSchema = new mongoose.Schema({
         }
     ],
 
-    // ⭐ NEW: TRACK WHAT USER HAS COMPLETED
     userCompletedContents: [
         {
             contentId: { type: String, required: true },
@@ -46,7 +46,6 @@ const userSchema = new mongoose.Schema({
     membership: { type: mongoose.Schema.Types.ObjectId, ref: "Membership", default: null },
     validTill: { type: Date, default: null },
 
-    // ⭐ PROGRESS FOR SERVICE-BASED MATERIALS
     servicesProgress: [
         {
             serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },

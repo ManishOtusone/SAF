@@ -230,13 +230,11 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* reCAPTCHA */}
                 <ReCAPTCHA
                     sitekey="6LeQSwQsAAAAAPJZ5StQZ4m_jV21gWr9nD0aa_Hg"
                     onChange={(token) => setCaptchaToken(token)}
                 />
 
-                {/* Submit */}
                 <button
                     type="submit"
                     disabled={loading}

@@ -6,6 +6,9 @@ const Membership = require("../models/Membership");
 const Referral = require("../models/referralSchema");
 const RequestContent = require("../models/requestContentModel");
 const Enquiry = require("../models/enquirySchema");
+const sendEmail = require("../utils/sendEmail");
+const baseUrl = process.env.BASE_URL;
+
 
 
 
@@ -161,7 +164,7 @@ exports.getDashboard = async (req, res) => {
             membership: {
                 ...user.membership.toObject(),
                 validTill: user.validTill,
-                purchaseDate: user.purchaseDate 
+                purchaseDate: user.purchaseDate
             },
 
             totalStudyMaterials,
@@ -457,6 +460,185 @@ exports.getActiveContentForUser = async (req, res) => {
     }
 };
 
+
+exports.sendOtp = async (req, res) => {
+    try {
+
+        const { email } = req.body;
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.otp = otp;
+        user.otpExpiry = Date.now() + 10 * 60 * 1000;
+
+        await user.save();
+
+        const emailTemplate = `
+      <div style="font-family: Arial, sans-serif; background:#f4f6f8; padding:30px;">
+        <div style="max-width:600px; margin:auto; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 10px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <div style="background:#2563eb; padding:20px; text-align:center; color:white;">
+            <h2 style="margin:0;">Alfa Chase Enterprise Foundation</h2>
+          </div>
+
+          <!-- Body -->
+          <div style="padding:30px; text-align:center;">
+            <h3 style="color:#333;">Password Reset Request</h3>
+            <p style="color:#555; font-size:15px;">
+              We received a request to reset your password. Please use the OTP below to continue.
+            </p>
+
+            <div style="
+              font-size:32px;
+              letter-spacing:6px;
+              font-weight:bold;
+              color:#2563eb;
+              background:#f1f5f9;
+              padding:15px;
+              border-radius:8px;
+              display:inline-block;
+              margin:20px 0;
+            ">
+              ${otp}
+            </div>
+
+            <p style="color:#666; font-size:14px;">
+              This OTP is valid for <b>10 minutes</b>.
+            </p>
+
+            <p style="color:#777; font-size:13px;">
+              If you did not request a password reset, please ignore this email.
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background:#f1f5f9; padding:20px; text-align:center; font-size:13px; color:#555;">
+            Regards,<br>
+            <b>Support Team</b><br>
+            Alfa Chase Enterprise Foundation
+          </div>
+
+        </div>
+      </div>
+    `;
+
+        await sendEmail(
+            email,
+            "Password Reset OTP - Alfa Chase Enterprise Foundation",
+            emailTemplate
+        );
+
+        res.json({
+            success: true,
+            message: "OTP sent to email"
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+};
+
+exports.verifyOtp = async (req, res) => {
+    try {
+
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and OTP are required"
+            });
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        if (!user.otpExpiry || user.otpExpiry < Date.now()) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP expired"
+            });
+        }
+
+        if (user.otp.toString() !== otp.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "OTP verified successfully"
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+
+    try {
+
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email }).select("+password");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        user.password = password;
+        user.otp = null;
+        user.otpExpiry = null;
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Password updated successfully"
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+
+};
 
 
 
