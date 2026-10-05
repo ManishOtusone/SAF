@@ -26,27 +26,7 @@ function App() {
     const token = localStorage.getItem("accessToken");
     const userRole = localStorage.getItem("role");
 
-    // if (!token) {
-    //   return <Navigate to="/" />;
-    // }
-
-
-    // if (userRole !== roleRequired) {
-    //   return (
-    //     <div style={{
-    //       display: 'flex',
-    //       justifyContent: 'center',
-    //       alignItems: 'center',
-    //       height: '100vh',
-    //       flexDirection: 'column',
-    //       textAlign: 'center'
-    //     }}>
-    //       <h2>Access Denied</h2>
-    //       <p>User not permitted to access this section.</p>
-    //       <p>Please contact administrator for access.</p>
-    //     </div>
-    //   );
-    // }
+   
 
     return children;
   }
@@ -58,10 +38,7 @@ function App() {
 
 
         <Routes>
-          {/* <Route path="/" element={<Layout />}>
-          <Route index element={<SignIn />} />
-          <Route path="signin" element={<SignIn />} />
-        </Route> */}
+         
 
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

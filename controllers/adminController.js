@@ -248,26 +248,43 @@ exports.saveMembershipData = async (req, res) => {
 
         const { plans, benefits } = req.body;
 
-        // ✅ Parse JSON safely
-        let parsedPlans, parsedBenefits;
+        let parsedPlans;
+        let parsedBenefits;
+
         try {
-            parsedPlans = typeof plans === "string" ? JSON.parse(plans) : plans;
-            parsedBenefits = typeof benefits === "string" ? JSON.parse(benefits) : benefits;
+            parsedPlans =
+                typeof plans === "string" ? JSON.parse(plans) : plans;
+
+            parsedBenefits =
+                typeof benefits === "string" ? JSON.parse(benefits) : benefits;
         } catch (parseError) {
             console.error("❌ Error parsing JSON data:", parseError);
+
             return res.status(400).json({
                 success: false,
                 message: "Invalid plans or benefits format",
             });
         }
 
-        // ✅ Replace pdfUrl → link for safety if frontend still sends pdfUrl
+        if (!Array.isArray(parsedPlans)) {
+            return res.status(400).json({
+                success: false,
+                message: "Plans must be an array",
+            });
+        }
+
+        if (!Array.isArray(parsedBenefits)) {
+            return res.status(400).json({
+                success: false,
+                message: "Benefits must be an array",
+            });
+        }
+
         parsedBenefits = parsedBenefits.map((benefit) => ({
             ...benefit,
             link: benefit.link || benefit.pdfUrl || "",
         }));
 
-        // ✅ Save or update membership data in MongoDB
         let existingData = await MembershipBenefit.findOne();
 
         if (!existingData) {
@@ -283,14 +300,58 @@ exports.saveMembershipData = async (req, res) => {
 
         await existingData.save();
 
-        res.json({
+        const planMapping = {
+            startup: "Startup",
+            growth: "GrowthStage",
+            matured: "MatureStage",
+        };
+
+        for (const plan of parsedPlans) {
+            if (!plan?.name) continue;
+
+            const membershipPlanName =
+                planMapping[plan.name.toLowerCase().trim()];
+
+            if (!membershipPlanName) continue;
+
+            const price = Number(plan.price);
+
+            if (!Number.isFinite(price) || price < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid price for ${plan.name}`,
+                });
+            }
+
+            const updatedMembership =
+                await Membership.findOneAndUpdate(
+                    { planName: membershipPlanName },
+                    {
+                        $set: {
+                            price,
+                        },
+                    },
+                    {
+                        new: true,
+                    }
+                );
+
+            if (!updatedMembership) {
+                console.warn(
+                    `Membership not found for plan: ${membershipPlanName}`
+                );
+            }
+        }
+
+        return res.json({
             success: true,
-            message: "✅ Membership data (with links) updated successfully",
+            message: "Membership plans and benefits updated successfully",
             data: existingData,
         });
     } catch (err) {
         console.error("💥 Error in saveMembershipData:", err);
-        res.status(500).json({
+
+        return res.status(500).json({
             success: false,
             message: err.message,
         });
@@ -572,6 +633,54 @@ exports.deleteContentService = async (req, res) => {
     }
 };
 
+exports.changeContentServiceStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        if (typeof isActive !== "boolean") {
+            return res.status(400).json({
+                success: false,
+                message: "isActive must be true or false",
+            });
+        }
+
+        const service = await ContentService.findByIdAndUpdate(
+            id,
+            { isActive },
+            {
+                new: true,
+                runValidators: true,
+            }
+        );
+
+        if (!service) {
+            return res.status(404).json({
+                success: false,
+                message: "Content service not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Content service ${
+                isActive ? "activated" : "deactivated"
+            } successfully`,
+            service,
+        });
+    } catch (error) {
+        console.error("Change Content Service Status Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error",
+        });
+    }
+};
+
+
+
+
 exports.onboardMember = async (req, res) => {
   try {
     const {
@@ -626,6 +735,65 @@ exports.onboardMember = async (req, res) => {
       message: "Internal Server Error"
     });
   }
+};
+
+
+
+exports.assignMembershipToUser = async (req, res) => {
+    try {
+        const { userId, membershipId } = req.params;
+
+        const membership = await Membership.findById(membershipId);
+
+        if (!membership) {
+            return res.status(404).json({
+                success: false,
+                message: "Membership not found"
+            });
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const purchaseDate = new Date();
+
+        const validTill = new Date(purchaseDate);
+        validTill.setDate(
+            validTill.getDate() + Number(membership.validityDays || 0)
+        );
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            {
+                membership: membership._id,
+                validTill,
+                purchaseDate
+            },
+            {
+                new: true
+            }
+        ).populate("membership");
+
+        return res.status(200).json({
+            success: true,
+            message: `Membership '${membership.planName}' assigned successfully!`,
+            data: updatedUser
+        });
+
+    } catch (error) {
+        console.error("Admin Assign Membership Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
+    }
 };
 
 

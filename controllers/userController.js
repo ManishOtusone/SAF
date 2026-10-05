@@ -235,29 +235,43 @@ exports.markStudyMaterialComplete = async (req, res) => {
 
         const user = await User.findById(userId);
 
-        if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-        const alreadyDone = user.userCompletedContents.some(c => c.contentId === contentId);
-
-        if (!alreadyDone) {
-            user.userCompletedContents.push({
-                contentId,
-                completedAt: new Date()
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
             });
         }
 
-        await user.save();
+        const alreadyDone = user.userCompletedContents.some(
+            c => String(c.contentId) === String(contentId)
+        );
 
-        res.json({
+        if (!alreadyDone) {
+            user.userCompletedContents.push({
+                contentId: String(contentId),
+                completedAt: new Date()
+            });
+
+            await user.save();
+        }
+
+        return res.json({
             success: true,
-            message: "Marked as completed",
+            alreadyDone,
+            message: alreadyDone
+                ? "Already completed"
+                : "Marked as completed",
             completedCount: user.userCompletedContents.length,
             totalMaterials: user.userContents.length
         });
 
     } catch (error) {
         console.error("markStudyMaterialComplete Error:", error);
-        res.status(500).json({ success: false, message: error.message });
+
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
