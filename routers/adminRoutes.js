@@ -13,7 +13,9 @@ const {
     updateContentService,
     deleteContentService,
     updateUser,
-    onboardMember
+    changeContentServiceStatus,
+    onboardMember,
+    assignMembershipToUser
 } = require("../controllers/adminController");
 
 router.post("/service", protect, authorizeRoles("admin"), createService);
@@ -44,7 +46,11 @@ router.post("/upload-content", protect, authorizeRoles("admin"), createContentSe
 router.get("/get-all-content", protect, authorizeRoles("admin"), getAllContentServices);
 router.patch("/update-content/:id", protect, authorizeRoles("admin"), updateContentService);
 router.delete("/delete-content/:id", protect, authorizeRoles("admin"), deleteContentService);
+router.patch("/content/:id", protect, authorizeRoles("admin"), changeContentServiceStatus);
 
 router.post("/onboard-member",protect, authorizeRoles("admin"),onboardMember);
+
+
+router.post("/assignMembership/:userId/:membershipId",protect, authorizeRoles("admin"),assignMembershipToUser);
 
 module.exports = router;

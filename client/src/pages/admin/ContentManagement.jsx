@@ -21,7 +21,9 @@ const ContentManagement = () => {
         });
 
         if (res.data.success) {
-          const normalUsers = res.data.users.filter((u) => u.role !== "admin");
+          const normalUsers = res.data.users.filter(
+            (u) => u.role !== "admin" && u.industry !== "Admin"
+          );
           setUsers(normalUsers);
         }
       } catch (error) {
@@ -134,7 +136,7 @@ const ContentManagement = () => {
     }
   };
 
-  
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-green-700 mb-6 border-b pb-3">

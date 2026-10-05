@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import { baseUrl } from "../../utils/baseUrl";
@@ -6,10 +6,13 @@ import { baseUrl } from "../../utils/baseUrl";
 const StudyMaterialDetail = () => {
   const { state } = useLocation();
   const item = state?.contentData;
-
-  if (!item) return <div className="p-6">Invalid material</div>;
+  const completedRef = useRef(false);
 
   useEffect(() => {
+    if (!item?._id || completedRef.current) return;
+
+    completedRef.current = true;
+
     const markComplete = async () => {
       try {
         const token = localStorage.getItem("accessToken");
@@ -17,34 +20,47 @@ const StudyMaterialDetail = () => {
         await axios.post(
           `${baseUrl}/user/complete-study-material`,
           { contentId: item._id },
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         window.dispatchEvent(new Event("progressUpdated"));
       } catch (err) {
+        completedRef.current = false;
         console.log("Mark complete error", err);
       }
     };
 
     markComplete();
-  }, [item._id]);
+  }, [item?._id]);
+
+  if (!item) {
+    return <div className="p-6">Invalid material</div>;
+  }
+
   const getEmbedUrl = (url) => {
     try {
       if (url.includes("youtu.be")) {
         const id = url.split("youtu.be/")[1].split("?")[0];
         return `https://www.youtube.com/embed/${id}`;
       }
+
       if (url.includes("watch?v=")) {
         const id = url.split("watch?v=")[1].split("&")[0];
         return `https://www.youtube.com/embed/${id}`;
       }
+
       return url;
     } catch {
       return url;
     }
   };
 
-  const finalUrl = item.type === "video" ? getEmbedUrl(item.url) : item.url;
+  const finalUrl =
+    item.type === "video" ? getEmbedUrl(item.url) : item.url;
 
   return (
     <div className="p-6">
@@ -55,14 +71,14 @@ const StudyMaterialDetail = () => {
           src={item.url}
           className="w-full h-[80vh] border"
           title="PDF Viewer"
-        ></iframe>
+        />
       ) : (
         <iframe
           src={finalUrl}
           className="w-full h-[80vh] border"
           allowFullScreen
           title="Video Viewer"
-        ></iframe>
+        />
       )}
     </div>
   );

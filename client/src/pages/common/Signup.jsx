@@ -55,7 +55,7 @@ const Signup = () => {
                 businessName: form.businessName,
                 ownerName: form.ownerName,
                 industry: form.industry,
-                contactInfo: `+91${form.contactNumber}`, 
+                contactInfo: `+91${form.contactNumber}`,
                 gstOrPan: form.gstPan,
                 city: form.city,
                 website: form.website,
@@ -163,7 +163,6 @@ const Signup = () => {
                         />
                     </div>
                 </div>
-                {/* GST / PAN */}
                 <div>
                     <label className="block text-sm font-medium mb-1">GST / PAN (optional)</label>
                     <input
@@ -176,7 +175,6 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* City */}
                 <div>
                     <label className="block text-sm font-medium mb-1">City</label>
                     <input
@@ -189,7 +187,6 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Website */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Website</label>
                     <input
@@ -202,7 +199,6 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Email */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Email</label>
                     <input
@@ -216,7 +212,6 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Password */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Password</label>
                     <input
@@ -230,8 +225,13 @@ const Signup = () => {
                     />
                 </div>
 
-                <ReCAPTCHA
+                {/* <ReCAPTCHA
                     sitekey="6LeQSwQsAAAAAPJZ5StQZ4m_jV21gWr9nD0aa_Hg"
+                    onChange={(token) => setCaptchaToken(token)}
+                /> */}
+
+                <ReCAPTCHA
+                    sitekey="6Le5zt8tAAAAABAfuMJu2QkkUu2C8pc3paFryDth"
                     onChange={(token) => setCaptchaToken(token)}
                 />
 
