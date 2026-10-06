@@ -184,21 +184,64 @@ exports.getDashboard = async (req, res) => {
 
 exports.createRequestContent = async (req, res) => {
     try {
-        const { selectedServices } = req.body;
+        const { selectedServices, message = "" } = req.body;
 
-        const newReq = await RequestContent.create({
-            user: req.user._id,
-            requests: selectedServices.map(service => ({
-                service,
-                content: ""
-            }))
+        if (
+            !Array.isArray(selectedServices) ||
+            selectedServices.length === 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Please select at least one content."
+            });
+        }
+
+        let requestContent = await RequestContent.findOne({
+            user: req.user._id
         });
 
-        return res.json({ success: true, message: "Content saved", data: newReq });
+        const newRequests = selectedServices.map((service) => ({
+            service,
+            message: message.trim(),
+            status: "pending",
+            content: {
+                serviceName: service,
+                videoUrl: "",
+                files: [],
+            },
+            uploadedAt: null,
+        }));
+        if (requestContent) {
+            requestContent.requests.push(...newRequests);
+            requestContent.count += selectedServices.length;
+
+            await requestContent.save();
+        } else {
+            requestContent = await RequestContent.create({
+                user: req.user._id,
+                count: selectedServices.length,
+                requests: newRequests
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Content saved",
+            data: requestContent
+        });
+
     } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
+        console.error("createRequestContent error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
     }
 };
+
+
+
 
 
 
@@ -446,18 +489,57 @@ exports.getMyReferrals = async (req, res) => {
 
 exports.getMyRequestedContent = async (req, res) => {
     try {
-        const data = await RequestContent.findOne({ user: req.user._id });
+        const data = await RequestContent.findOne({
+            user: req.user._id
+        });
+
+        const requests = data ? data.requests : [];
+
+        // Get active content services
+        const activeServices = await ContentService.find({
+            isActive: true
+        }).select("name");
+
+        const contentServiceNames = new Set(
+            activeServices.map((service) =>
+                String(service.name).trim().toLowerCase()
+            )
+        );
+
+        // Only Online Learning/content requests
+        const contentRequests = requests.filter((item) =>
+            contentServiceNames.has(
+                String(item.service || "").trim().toLowerCase()
+            )
+        );
 
         return res.json({
             success: true,
-            data: data ? data.requests : []
+
+            // All requests - used for individual benefit counts
+            data: requests,
+
+            // Total requests of everything
+            count: requests.length,
+
+            // Only Online Learning requests
+            contentCount: contentRequests.length,
+
+            // Only Online Learning service names
+            contentRequests: contentRequests.map(
+                (item) => item.service
+            )
         });
 
     } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
+        console.error("getMyRequestedContent error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
     }
 };
-
 
 exports.getActiveContentForUser = async (req, res) => {
     try {
@@ -473,6 +555,9 @@ exports.getActiveContentForUser = async (req, res) => {
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+
+
 
 
 exports.sendOtp = async (req, res) => {

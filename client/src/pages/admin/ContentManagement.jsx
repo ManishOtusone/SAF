@@ -1,48 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import { baseUrl } from "../../utils/baseUrl";
 import Swal from "sweetalert2";
 
-const ContentManagement = () => {
-  const [selectedUser, setSelectedUser] = useState("");
-  const [users, setUsers] = useState([]);
+const ContentManagement = ({
+  selectedRequest = null,
+  onClose,
+  onSuccess,
+}) => {
   const [files, setFiles] = useState([]);
   const [videoUrl, setVideoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const token = localStorage.getItem("accessToken");
-
-        const res = await axios.get(`${baseUrl}/admin/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.data.success) {
-          const normalUsers = res.data.users.filter(
-            (u) => u.role !== "admin" && u.industry !== "Admin"
-          );
-          setUsers(normalUsers);
-        }
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
-
   const handleFileChange = (e) => {
-    setFiles([...e.target.files]);
+    setFiles(Array.from(e.target.files || []));
   };
 
   const handleUpload = async () => {
-    if (!selectedUser) {
+    if (!selectedRequest) {
       return Swal.fire({
         icon: "warning",
-        title: "User Required",
-        text: "Please select a user first!",
+        title: "Request Required",
+        text: "Please select a requested content first.",
       });
     }
 
@@ -56,7 +36,21 @@ const ContentManagement = () => {
 
     const confirmResult = await Swal.fire({
       title: "Confirm Upload",
-      text: "Are you sure you want to upload this content?",
+      html: `
+        <div style="text-align:left">
+          <p><strong>User:</strong> ${
+            selectedRequest.user?.ownerName || "N/A"
+          }</p>
+
+          <p><strong>Business:</strong> ${
+            selectedRequest.user?.businessName || "N/A"
+          }</p>
+
+          <p><strong>Requested Content:</strong> ${
+            selectedRequest.service || "N/A"
+          }</p>
+        </div>
+      `,
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#2563eb",
@@ -80,12 +74,38 @@ const ContentManagement = () => {
       });
 
       const token = localStorage.getItem("accessToken");
+
+      if (!token) {
+        Swal.close();
+
+        return Swal.fire({
+          icon: "error",
+          title: "Authentication Error",
+          text: "Please login again.",
+        });
+      }
+
       const formData = new FormData();
 
-      formData.append("userId", selectedUser);
-      formData.append("videoUrl", videoUrl);
+      /*
+       * IMPORTANT:
+       * Send the exact requested-content request ID.
+       */
+      formData.append("requestId", selectedRequest._id);
 
-      files.forEach((file) => formData.append("files", file));
+      /*
+       * Send user ID also.
+       */
+      formData.append(
+        "userId",
+        selectedRequest.userId || selectedRequest.user?._id
+      );
+
+      formData.append("videoUrl", videoUrl.trim());
+
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
 
       const res = await axios.post(
         `${baseUrl}/admin/upload-service-content`,
@@ -95,9 +115,15 @@ const ContentManagement = () => {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
+
           onUploadProgress: (p) => {
-            const percent = Math.round((p.loaded * 100) / p.total);
-            setProgress(percent);
+            if (p.total) {
+              const percent = Math.round(
+                (p.loaded * 100) / p.total
+              );
+
+              setProgress(percent);
+            }
           },
         }
       );
@@ -108,103 +134,278 @@ const ContentManagement = () => {
         await Swal.fire({
           icon: "success",
           title: "Upload Successful",
-          text: "Content uploaded successfully!",
+          text: `${selectedRequest.service} content uploaded successfully!`,
           confirmButtonColor: "#16a34a",
         });
 
         setFiles([]);
         setVideoUrl("");
-        setSelectedUser("");
         setProgress(0);
+
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        if (onClose) {
+          onClose();
+        }
       } else {
         Swal.fire({
           icon: "error",
           title: "Upload Failed",
-          text: "Something went wrong.",
+          text:
+            res.data.message ||
+            "Something went wrong.",
         });
       }
-
     } catch (error) {
       Swal.close();
+
+      console.error(
+        "Upload Content Error:",
+        error
+      );
+
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "Error uploading content.",
+        title: "Upload Failed",
+        text:
+          error.response?.data?.message ||
+          "Error uploading content.",
       });
     } finally {
       setUploading(false);
     }
   };
 
+  if (!selectedRequest) {
+    return null;
+  }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-green-700 mb-6 border-b pb-3">
-        Content Management
-      </h1>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
-      <div className="bg-white shadow-md rounded-lg p-6 border">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Upload Requested Content
+            </h2>
 
-        <h2 className="text-xl font-semibold mb-3">Select User</h2>
-        <select
-          value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-          className="border rounded w-full p-2 mb-6"
-        >
-          <option value="">-- Select User --</option>
-          {users.map((user) => (
-            <option key={user._id} value={user._id}>
-              {user.businessName
-                ? `${user.businessName} (${user.ownerName || "Owner"})`
-                : user.email}
-            </option>
-          ))}
-        </select>
-
-        <h2 className="text-xl font-semibold mb-3">Video URL (Optional)</h2>
-        <input
-          type="text"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="Enter YouTube / Drive / Vimeo link"
-          className="border rounded w-full p-2 mb-6"
-        />
-
-        <h2 className="text-xl font-semibold mb-3">Upload Files</h2>
-        <input
-          type="file"
-          multiple
-          onChange={handleFileChange}
-          className="border p-2 rounded w-full mb-4"
-        />
-
-        {files.length > 0 && (
-          <div className="bg-gray-50 p-3 rounded border text-sm mb-4">
-            <strong>Selected Files:</strong>
-            <ul className="list-disc pl-5 mt-2">
-              {files.map((f, i) => (
-                <li key={i}>{f.name}</li>
-              ))}
-            </ul>
+            <p className="text-sm text-gray-500 mt-1">
+              Upload content for this specific request
+            </p>
           </div>
-        )}
 
-        {uploading && (
-          <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
-            <div
-              className="bg-blue-600 h-3 rounded-full"
-              style={{ width: `${progress}%` }}
-            ></div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={uploading}
+            className="text-gray-500 hover:text-red-600 text-3xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Request Information */}
+        <div className="p-6">
+
+          <div className="bg-gray-50 border rounded-lg p-4 mb-6">
+
+            <h3 className="font-semibold text-lg mb-4 text-gray-800">
+              Request Details
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  User
+                </p>
+
+                <p className="font-semibold text-gray-800">
+                  {selectedRequest.user?.ownerName ||
+                    selectedRequest.ownerName ||
+                    "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Business
+                </p>
+
+                <p className="font-semibold text-gray-800">
+                  {selectedRequest.user?.businessName ||
+                    selectedRequest.businessName ||
+                    "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Email
+                </p>
+
+                <p className="font-semibold text-gray-800 break-all">
+                  {selectedRequest.user?.email ||
+                    selectedRequest.email ||
+                    "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">
+                  Phone
+                </p>
+
+                <p className="font-semibold text-gray-800">
+                  {selectedRequest.user?.contactInfo ||
+                    selectedRequest.contactInfo ||
+                    "N/A"}
+                </p>
+              </div>
+
+            </div>
+
+            <div className="mt-4 pt-4 border-t">
+
+              <p className="text-sm text-gray-500">
+                Requested Content
+              </p>
+
+              <p className="font-bold text-green-700 text-lg">
+                {selectedRequest.service}
+              </p>
+
+            </div>
+
           </div>
-        )}
 
-        <button
-          onClick={handleUpload}
-          disabled={uploading}
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {uploading ? `Uploading... (${progress}%)` : "Upload Content"}
-        </button>
+          {/* Video URL */}
+          <div className="mb-6">
+
+            <label className="block text-lg font-semibold mb-2">
+              Video URL
+              <span className="text-sm font-normal text-gray-500">
+                {" "}
+                (Optional)
+              </span>
+            </label>
+
+            <input
+              type="text"
+              value={videoUrl}
+              onChange={(e) =>
+                setVideoUrl(e.target.value)
+              }
+              placeholder="Enter YouTube / Drive / Vimeo link"
+              disabled={uploading}
+              className="border rounded-lg w-full p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+          </div>
+
+          {/* Files */}
+          <div className="mb-6">
+
+            <label className="block text-lg font-semibold mb-2">
+              Upload Files
+              <span className="text-sm font-normal text-gray-500">
+                {" "}
+                (Optional)
+              </span>
+            </label>
+
+            <input
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="border p-3 rounded-lg w-full"
+            />
+
+          </div>
+
+          {/* Selected Files */}
+          {files.length > 0 && (
+            <div className="bg-gray-50 p-4 rounded-lg border mb-6">
+
+              <strong className="text-gray-800">
+                Selected Files:
+              </strong>
+
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+
+                {files.map((file, index) => (
+                  <li
+                    key={`${file.name}-${index}`}
+                    className="text-sm text-gray-700"
+                  >
+                    {file.name}
+                  </li>
+                ))}
+
+              </ul>
+
+            </div>
+          )}
+
+          {/* Progress */}
+          {uploading && (
+            <div className="mb-6">
+
+              <div className="flex justify-between text-sm mb-2">
+                <span>
+                  Uploading...
+                </span>
+
+                <span>
+                  {progress}%
+                </span>
+              </div>
+
+              <div className="w-full bg-gray-200 rounded-full h-3">
+
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all"
+                  style={{
+                    width: `${progress}%`,
+                  }}
+                />
+
+              </div>
+
+            </div>
+          )}
+
+          {/* Buttons */}
+          <div className="flex justify-end gap-3">
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={uploading}
+              className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={uploading}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {uploading
+                ? `Uploading... ${progress}%`
+                : "Upload Content"}
+            </button>
+
+          </div>
+
+        </div>
       </div>
     </div>
   );

@@ -1,37 +1,59 @@
+
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, CreditCard, LayoutDashboard, BookOpen, LogIn, LogOut, MessageSquare, Share, Book, BookA } from "lucide-react";
+import {
+  Menu,
+  X,
+  CreditCard,
+  LayoutDashboard,
+  BookOpen,
+  LogIn,
+  LogOut,
+  MessageSquare,
+  Share,
+  Book,
+} from "lucide-react";
 
 const UserSidebar = () => {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("accessToken"));
 
-  // 🧠 Remember sidebar open/close state
+  const [isOpen, setIsOpen] = useState(true);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    !!localStorage.getItem("accessToken")
+  );
+
+  // Remember sidebar open/close state
   useEffect(() => {
     const stored = localStorage.getItem("sidebarOpen");
-    if (stored !== null) setIsOpen(stored === "true");
+
+    if (stored !== null) {
+      setIsOpen(stored === "true");
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", isOpen);
   }, [isOpen]);
 
-  // 🔒 Handle logout/login
+  // Logout
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("role");
+
     setIsLoggedIn(false);
+
     navigate("/login");
   };
 
+  // Login
   const handleLogin = () => {
     navigate("/login");
   };
 
   return (
     <>
-      {/* Toggle button for mobile */}
+      {/* Mobile Toggle */}
       <button
         className="md:hidden fixed top-4 left-4 z-50 text-green-800 bg-white border border-green-600 rounded-md p-2 shadow-md"
         onClick={() => setIsOpen(!isOpen)}
@@ -50,13 +72,14 @@ const UserSidebar = () => {
           {/* Logo */}
           <div
             className="flex items-center space-x-2 mb-8 cursor-pointer"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/user/")}
           >
             <img
               src="/Logo.png"
               alt="Logo"
               className="h-10 w-10 object-contain border border-green-500 rounded-full p-1 bg-white"
             />
+
             {isOpen && (
               <span className="font-semibold text-lg text-green-800">
                 MSME Portal
@@ -64,81 +87,97 @@ const UserSidebar = () => {
             )}
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation */}
           <nav className="flex flex-col w-full space-y-1">
 
-            {/* ✅ Dashboard */}
-            <NavLink
-              to="/user/"
-              end
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
-              }
-            >
-              <LayoutDashboard className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Dashboard</span>}
-            </NavLink>
-
-            {/* 📚 Study Material */}
-            <NavLink
-              to="/user/studyMaterial"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
-              }
-            >
-              <BookOpen className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Study Material</span>}
-            </NavLink>
-
-            {/* 💳 Plan Page */}
+            {/* Dashboard
+                Now points to the old Plan Page */}
             <NavLink
               to="/user/plans"
               end
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
-              <CreditCard className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Plan Page</span>}
+              <LayoutDashboard className="w-5 h-5" />
+
+              {isOpen && (
+                <span className="ml-3 font-medium">
+                  Dashboard
+                </span>
+              )}
             </NavLink>
+
+            {/* Study Material */}
+            <NavLink
+              to="/user/studyMaterial"
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
+                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+              }
+            >
+              <BookOpen className="w-5 h-5" />
+
+              {isOpen && (
+                <span className="ml-3 font-medium">
+                  Study Material
+                </span>
+              )}
+            </NavLink>
+
+            {/* Request For Contents
             <NavLink
               to="/user/content"
               end
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
               <Book className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Request For Contents</span>}
-            </NavLink>
 
-            {/* 📩 Enquiry & Feedback */}
+              {isOpen && (
+                <span className="ml-3 font-medium">
+                  Request For Contents
+                </span>
+              )}
+            </NavLink> */}
+
+            {/* Enquiry & Feedback */}
             <NavLink
               to="/user/enquiry"
               end
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
               <MessageSquare className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Enquiry & Feedback</span>}
+
+              {isOpen && (
+                <span className="ml-3 font-medium">
+                  Enquiry & Feedback
+                </span>
+              )}
             </NavLink>
 
+            {/* Referrals */}
             <NavLink
               to="/user/referalls"
               end
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 text-green-800 hover:bg-yellow-100 hover:text-green-700 transition rounded-md
-                  ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
+                ${isActive ? "bg-green-100 text-green-700 font-semibold" : ""}`
               }
             >
               <Share className="w-5 h-5" />
-              {isOpen && <span className="ml-3 font-medium">Referrals</span>}
+
+              {isOpen && (
+                <span className="ml-3 font-medium">
+                  Referrals
+                </span>
+              )}
             </NavLink>
 
           </nav>
@@ -146,12 +185,14 @@ const UserSidebar = () => {
 
         {/* Bottom Section */}
         <div className="mb-6 flex flex-col items-center w-full">
+
           {!isLoggedIn ? (
             <button
               onClick={handleLogin}
               className="flex items-center w-5/6 justify-center space-x-2 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
             >
               <LogIn size={18} />
+
               {isOpen && <span>Login</span>}
             </button>
           ) : (
@@ -160,16 +201,19 @@ const UserSidebar = () => {
               className="flex items-center w-5/6 justify-center space-x-2 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition"
             >
               <LogOut size={18} />
+
               {isOpen && <span>Logout</span>}
             </button>
           )}
+
         </div>
       </aside>
 
       {/* Main Content Wrapper */}
       <div
-        className={`transition-all duration-300 ${isOpen ? "md:ml-64 ml-20" : "ml-20"
-          }`}
+        className={`transition-all duration-300 ${
+          isOpen ? "md:ml-64 ml-20" : "ml-20"
+        }`}
       >
         {/* Page content goes here */}
       </div>
