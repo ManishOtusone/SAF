@@ -1,5 +1,51 @@
 const mongoose = require("mongoose");
 
+const requestItemSchema = new mongoose.Schema(
+  {
+    service: {
+      type: String,
+      required: true,
+    },
+
+    message: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+
+    content: {
+      serviceName: {
+        type: String,
+        default: "",
+      },
+
+      videoUrl: {
+        type: String,
+        default: "",
+      },
+
+      files: {
+        type: [String],
+        default: [],
+      },
+    },
+
+    uploadedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    _id: true,
+  }
+);
+
 const requestContentSchema = new mongoose.Schema(
   {
     user: {
@@ -7,14 +53,23 @@ const requestContentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    requests: [
-      {
-        service: { type: String, required: true },
-        content: { type: String, default: "" },
-      },
-    ],
+
+    count: {
+      type: Number,
+      default: 0,
+    },
+
+    requests: {
+      type: [requestItemSchema],
+      default: [],
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model("RequestContent", requestContentSchema);
+module.exports = mongoose.model(
+  "RequestContent",
+  requestContentSchema
+);

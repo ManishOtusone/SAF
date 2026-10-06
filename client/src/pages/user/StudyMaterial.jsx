@@ -5,6 +5,7 @@ import { baseUrl } from "../../utils/baseUrl";
 
 const StudyMaterial = () => {
   const navigate = useNavigate();
+
   const [materials, setMaterials] = useState([]);
   const [plan, setPlan] = useState("");
 
@@ -12,15 +13,21 @@ const StudyMaterial = () => {
     const fetchMaterials = async () => {
       try {
         const token = localStorage.getItem("accessToken");
-        const res = await axios.get(`${baseUrl}/user/study-materials`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+
+        const res = await axios.get(
+          `${baseUrl}/user/study-materials`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         console.log("API Response:", res.data);
 
         if (res.data.success) {
-          setMaterials(res.data.studyMaterials);
-          setPlan(res.data.plan);
+          setMaterials(res.data.studyMaterials || []);
+          setPlan(res.data.plan || "");
         }
       } catch (err) {
         console.error(err);
@@ -32,48 +39,82 @@ const StudyMaterial = () => {
 
   const handleClick = (item) => {
     navigate(`/user/studyMaterial/${item._id}`, {
-      state: { contentData: item }
+      state: {
+        contentData: item,
+      },
     });
   };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen w-full">
+
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
         📘 Study Materials ({plan} Plan)
       </h1>
 
       <div className="overflow-x-auto bg-white shadow-lg rounded-xl">
+
         <table className="w-full border-collapse">
+
           <thead>
             <tr className="bg-gradient-to-r from-green-600 to-yellow-500 text-white text-left">
-              <th className="py-3 px-4 font-medium">#</th>
-              <th className="py-3 px-4 font-medium">Title</th>
-              <th className="py-3 px-4 font-medium">Type</th>
-              <th className="py-3 px-4 font-medium">Action</th>
+
+              <th className="py-3 px-4 font-medium">
+                #
+              </th>
+
+              <th className="py-3 px-4 font-medium">
+                Service Name
+              </th>
+
+              <th className="py-3 px-4 font-medium">
+                Title
+              </th>
+
+              <th className="py-3 px-4 font-medium">
+                Type
+              </th>
+
+              <th className="py-3 px-4 font-medium">
+                Action
+              </th>
+
             </tr>
           </thead>
 
           <tbody>
+
             {materials.map((item, index) => (
               <tr
                 key={item._id}
                 className={`border-b cursor-pointer hover:bg-yellow-50 transition ${
-                  index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                  index % 2 === 0
+                    ? "bg-gray-50"
+                    : "bg-white"
                 }`}
               >
-                <td className="py-3 px-4">{index + 1}</td>
+
+                {/* Number */}
+                <td className="py-3 px-4">
+                  {index + 1}
+                </td>
+
+                {/* Service Name */}
+                <td className="py-3 px-4 font-semibold text-green-700">
+                  {item.serviceName || "N/A"}
+                </td>
 
                 {/* Title */}
                 <td className="py-3 px-4 font-medium text-gray-800">
                   {item.title}
                 </td>
 
-                {/* Type (video/pdf) */}
+                {/* Type */}
                 <td className="py-3 px-4 capitalize text-gray-700">
                   {item.type}
                 </td>
 
-                {/* View Button */}
+                {/* View */}
                 <td className="py-3 px-4">
                   <button
                     onClick={() => handleClick(item)}
@@ -82,22 +123,27 @@ const StudyMaterial = () => {
                     View
                   </button>
                 </td>
+
               </tr>
             ))}
 
             {materials.length === 0 && (
               <tr>
                 <td
-                  colSpan="4"
+                  colSpan="5"
                   className="text-center py-6 text-gray-500 font-medium"
                 >
                   No study materials uploaded yet.
                 </td>
               </tr>
             )}
+
           </tbody>
+
         </table>
+
       </div>
+
     </div>
   );
 };

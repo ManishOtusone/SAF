@@ -77,7 +77,7 @@ const AdminSidebar = () => {
               { to: "/admin/serviceManagement", icon: LayoutDashboard, label: "Service Management" },
               { to: "/admin/content-manager", icon: BookOpen, label: "Learning Contents" },
               { to: "/admin/content-request", icon: MessageSquare, label: "Content Requests" },
-              { to: "/admin/contentManagement", icon: BookOpen, label: "Content Management" },
+              // { to: "/admin/contentManagement", icon: BookOpen, label: "Content Management" },
               { to: "/admin/enquiry", icon: MessageSquare, label: "Enquiry & Feedback" },
               { to: "/admin/allReferalls", icon: Share, label: "All Referrals" },
             ].map(({ to, icon: Icon, label }) => (

@@ -27,10 +27,32 @@ const userSchema = new mongoose.Schema({
 
     userContents: [
         {
-            title: { type: String, required: true },
-            type: { type: String, enum: ["video", "pdf"], required: true },
-            url: { type: String, required: true },
-            uploadedAt: { type: Date, default: Date.now },
+            serviceName: {
+                type: String,
+                default: "",
+                trim: true,
+            },
+
+            title: {
+                type: String,
+                required: true,
+            },
+
+            type: {
+                type: String,
+                enum: ["video", "pdf"],
+                required: true,
+            },
+
+            url: {
+                type: String,
+                required: true,
+            },
+
+            uploadedAt: {
+                type: Date,
+                default: Date.now,
+            },
         }
     ],
 

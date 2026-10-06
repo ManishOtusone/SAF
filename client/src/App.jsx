@@ -70,7 +70,7 @@ function App() {
               <UserLayout />
             </PrivateRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={<MembershipPlans />} />
             <Route path="plans" element={<MembershipPlans />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="studyMaterial" element={<StudyMaterial />} />
