@@ -37,7 +37,35 @@ const StudyMaterial = () => {
     fetchMaterials();
   }, []);
 
-  const handleClick = (item) => {
+  const handleClick = async (item) => {
+    // Download PDF / file instead of opening it
+    if (item.type === "pdf" || item.type === "file") {
+      try {
+        const response = await fetch(item.url);
+        const blob = await response.blob();
+
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = item.title || "study-material";
+
+        document.body.appendChild(link);
+        link.click();
+
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Download failed:", error);
+
+        // Fallback
+        window.open(item.url, "_blank");
+      }
+
+      return;
+    }
+
+    // For other types, open detail page
     navigate(`/user/studyMaterial/${item._id}`, {
       state: {
         contentData: item,
@@ -87,11 +115,10 @@ const StudyMaterial = () => {
             {materials.map((item, index) => (
               <tr
                 key={item._id}
-                className={`border-b cursor-pointer hover:bg-yellow-50 transition ${
-                  index % 2 === 0
+                className={`border-b cursor-pointer hover:bg-yellow-50 transition ${index % 2 === 0
                     ? "bg-gray-50"
                     : "bg-white"
-                }`}
+                  }`}
               >
 
                 {/* Number */}
