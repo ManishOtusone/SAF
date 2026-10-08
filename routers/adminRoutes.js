@@ -15,7 +15,7 @@ const {
     updateUser,
     changeContentServiceStatus,
     onboardMember,
-    assignMembershipToUser
+    assignMembershipToUser,deleteUser
 } = require("../controllers/adminController");
 
 router.post("/service", protect, authorizeRoles("admin"), createService);
@@ -52,5 +52,7 @@ router.post("/onboard-member",protect, authorizeRoles("admin"),onboardMember);
 
 
 router.post("/assignMembership/:userId/:membershipId",protect, authorizeRoles("admin"),assignMembershipToUser);
+
+router.delete("/users/:id",protect, authorizeRoles("admin"),deleteUser);
 
 module.exports = router;

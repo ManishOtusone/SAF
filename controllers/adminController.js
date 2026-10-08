@@ -12,6 +12,11 @@ const ContentService = require("../models/ContentService.js");
 const sendEmail = require("../utils/sendEmail");
 
 
+const mongoose = require("mongoose");
+
+const BenefitRequest = require("../models/BenefitRequest");
+
+
 
 
 exports.createService = async (req, res) => {
@@ -1289,6 +1294,90 @@ exports.assignMembershipToUser = async (req, res) => {
             success: false,
             message: "Server error"
         });
+    }
+};
+
+
+
+
+
+
+
+exports.deleteUser = async (req, res) => {
+    const session = await mongoose.startSession();
+
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid user ID",
+            });
+        }
+
+        session.startTransaction();
+
+        const user = await User.findById(id).session(session);
+
+        if (!user) {
+            await session.abortTransaction();
+
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        if (user.role === "admin") {
+            await session.abortTransaction();
+
+            return res.status(403).json({
+                success: false,
+                message: "Admin user cannot be deleted",
+            });
+        }
+
+        await BenefitRequest.deleteMany(
+            { user: id },
+            { session }
+        );
+
+        await Enquiry.deleteMany(
+            { userId: id },
+            { session }
+        );
+
+        await Referral.deleteMany(
+            { userId: id },
+            { session }
+        );
+
+        await RequestContent.deleteMany(
+            { user: id },
+            { session }
+        );
+
+        await User.findByIdAndDelete(id, { session });
+
+        await session.commitTransaction();
+
+        return res.status(200).json({
+            success: true,
+            message: "Member and all related data deleted successfully",
+        });
+    } catch (error) {
+        await session.abortTransaction();
+
+        console.error("Delete User Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete member and related data",
+            error: error.message,
+        });
+    } finally {
+        session.endSession();
     }
 };
 

@@ -7,6 +7,12 @@ const MemberManagement = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [openActionMenu, setOpenActionMenu] = useState(null)
+  const [actionMenuPosition, setActionMenuPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
 
@@ -82,6 +88,20 @@ const MemberManagement = () => {
     fetchMembers();
     fetchMemberships();
   }, []);
+
+  useEffect(() => {
+  const handleClickOutside = () => {
+    setOpenActionMenu(null);
+  };
+
+  if (openActionMenu) {
+    document.addEventListener("click", handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener("click", handleClickOutside);
+  };
+}, [openActionMenu]);
 
   const openPlanModal = (member) => {
     setSelectedMember(member);
@@ -308,6 +328,60 @@ const MemberManagement = () => {
     }
   };
 
+
+  const handleDeleteMember = async (member) => {
+    const confirmResult = await Swal.fire({
+      title: "Delete Member?",
+      html: `
+      <div style="text-align:left">
+        <p>Are you sure you want to delete this member?</p>
+        <p><strong>Business:</strong> ${member.businessName || "-"}</p>
+        <p><strong>Email:</strong> ${member.email || "-"}</p>
+      </div>
+    `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      const res = await axios.delete(
+        `${baseUrl}/admin/users/${member._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (res.data.success) {
+        await Swal.fire({
+          icon: "success",
+          title: "Deleted!",
+          text: "Member deleted successfully",
+          confirmButtonColor: "#16a34a",
+        });
+
+        fetchMembers();
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Delete Failed",
+        text:
+          error.response?.data?.message ||
+          "Failed to delete member",
+      });
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -382,23 +456,70 @@ const MemberManagement = () => {
                   </td>
 
                   <td className="px-4 py-3">
-                    <div className="flex gap-3 items-center">
-                      <button
-                        onClick={() => openModal(member)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Edit
-                      </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
 
-                      {member.industry !== "Admin" && (
+                        const rect = e.currentTarget.getBoundingClientRect();
+
+                        setActionMenuPosition({
+                          top: rect.bottom + 6,
+                          left: rect.right - 160,
+                        });
+
+                        setOpenActionMenu(
+                          openActionMenu === member._id ? null : member._id
+                        );
+                      }}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition text-xl font-bold"
+                    >
+                      ⋮
+                    </button>
+
+                    {openActionMenu === member._id && (
+                      <div
+                        className="fixed z-[9999] w-40 bg-white border border-gray-200 rounded-xl shadow-xl py-1"
+                        style={{
+                          top: actionMenuPosition.top,
+                          left: actionMenuPosition.left,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
-                          onClick={() => openPlanModal(member)}
-                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+                          onClick={() => {
+                            setOpenActionMenu(null);
+                            openModal(member);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
                         >
-                          Assign Plan
+                          Edit
                         </button>
-                      )}
-                    </div>
+
+                        {member.industry !== "Admin" && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setOpenActionMenu(null);
+                                openPlanModal(member);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                            >
+                              Assign Plan
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setOpenActionMenu(null);
+                                handleDeleteMember(member);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
