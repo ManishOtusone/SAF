@@ -300,7 +300,7 @@ const ContentManagement = ({
               onChange={(e) =>
                 setVideoUrl(e.target.value)
               }
-              placeholder="Enter YouTube / Drive / Vimeo link"
+              placeholder="Enter YouTube / Drive / Video link"
               disabled={uploading}
               className="border rounded-lg w-full p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
