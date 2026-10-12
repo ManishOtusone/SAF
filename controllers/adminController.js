@@ -497,7 +497,7 @@ exports.uploadServiceContent = async (req, res) => {
             try {
                 const resourceType =
                     file.mimetype &&
-                    file.mimetype.includes("video")
+                        file.mimetype.includes("video")
                         ? "video"
                         : "auto";
 
@@ -521,7 +521,7 @@ exports.uploadServiceContent = async (req, res) => {
                     title: file.originalname,
                     type:
                         file.mimetype &&
-                        file.mimetype.includes("video")
+                            file.mimetype.includes("video")
                             ? "video"
                             : "pdf",
                     url: viewableUrl,
@@ -565,7 +565,9 @@ exports.uploadServiceContent = async (req, res) => {
 
         requestedItem.status = "approved";
 
-        requestedItem.uploadedAt = new Date();
+        if (!requestedItem.uploadedAt) {
+            requestedItem.uploadedAt = new Date();
+        }
 
         requestedItem.content = {
             serviceName: serviceName,
@@ -623,6 +625,205 @@ exports.uploadServiceContent = async (req, res) => {
         });
     }
 };
+
+
+
+exports.updateServiceContent = async (req, res) => {
+    try {
+        const { userId, requestId, videoUrl } = req.body;
+        const files = req.files || [];
+
+        if (!userId || !requestId) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID and Request ID are required",
+            });
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        const requestContent = await RequestContent.findOne({
+            user: userId,
+        });
+
+        if (!requestContent) {
+            return res.status(404).json({
+                success: false,
+                message: "Content request not found",
+            });
+        }
+
+        const requestedItem = requestContent.requests.id(requestId);
+
+        if (!requestedItem) {
+            return res.status(404).json({
+                success: false,
+                message: "Requested service not found",
+            });
+        }
+
+        const serviceName = requestedItem.service;
+        const previousContent = requestedItem.content || {};
+
+        // PATCH: If videoUrl is omitted, preserve the existing link.
+        // Send an empty string to remove the existing link.
+        const finalVideoUrl =
+            videoUrl !== undefined
+                ? String(videoUrl).trim()
+                : previousContent.videoUrl || "";
+
+        // PATCH: Preserve existing files unless keepFiles is supplied.
+        let keepFiles = previousContent.files || [];
+
+        if (req.body.keepFiles !== undefined) {
+            try {
+                keepFiles =
+                    typeof req.body.keepFiles === "string"
+                        ? JSON.parse(req.body.keepFiles)
+                        : req.body.keepFiles;
+
+                if (
+                    !Array.isArray(keepFiles) ||
+                    !keepFiles.every(
+                        (url) => typeof url === "string"
+                    )
+                ) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "keepFiles must be an array of URLs",
+                    });
+                }
+            } catch {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid keepFiles format",
+                });
+            }
+        }
+
+        const previousFiles = previousContent.files || [];
+
+        // Only retain files that were already attached to this request.
+        const validKeepFiles = keepFiles.filter((url) =>
+            previousFiles.includes(url)
+        );
+
+        const uploadedFiles = [];
+
+        // Upload newly added files.
+        for (const file of files) {
+            try {
+                const resourceType =
+                    file.mimetype?.includes("video")
+                        ? "video"
+                        : "auto";
+
+                const uploaded = await cloudinary.uploader.upload(
+                    file.path,
+                    {
+                        resource_type: resourceType,
+                        folder: "user_contents",
+                    }
+                );
+
+                uploadedFiles.push({
+                    serviceName,
+                    title: file.originalname,
+                    type: file.mimetype?.includes("video")
+                        ? "video"
+                        : "pdf",
+                    url: uploaded.secure_url,
+                    uploadedAt: new Date(),
+                });
+            } finally {
+                if (file.path && fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+            }
+        }
+
+        const previousUrls = new Set([
+            ...(previousContent.videoUrl
+                ? [previousContent.videoUrl]
+                : []),
+            ...previousFiles,
+        ]);
+
+        // Capture metadata before removing previous request content.
+        const previousItems = user.userContents.filter(
+            (content) => previousUrls.has(content.url)
+        );
+
+        const retainedItems = previousItems.filter(
+            (content) => validKeepFiles.includes(content.url)
+        );
+
+        user.userContents = user.userContents.filter(
+            (content) => !previousUrls.has(content.url)
+        );
+
+        // Save the updated video link.
+        if (finalVideoUrl) {
+            user.userContents.push({
+                serviceName,
+                title: "Video Content",
+                type: "video",
+                url: finalVideoUrl,
+                uploadedAt: new Date(),
+            });
+        }
+
+        user.userContents.push(...retainedItems);
+        user.userContents.push(...uploadedFiles);
+
+        requestedItem.status = "approved";
+
+        if (!requestedItem.uploadedAt) {
+            requestedItem.uploadedAt = new Date();
+        }
+
+        requestedItem.content = {
+            serviceName,
+            videoUrl: finalVideoUrl,
+            files: [
+                ...validKeepFiles,
+                ...uploadedFiles.map((file) => file.url),
+            ],
+        };
+
+        await user.save();
+        await requestContent.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Content updated successfully",
+            request: {
+                requestId: requestedItem._id,
+                service: requestedItem.service,
+                status: requestedItem.status,
+                content: requestedItem.content,
+                uploadedAt: requestedItem.uploadedAt,
+            },
+        });
+    } catch (error) {
+        console.error("UPDATE CONTENT ERROR:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update content",
+            error: error.message,
+        });
+    }
+};
+
+
 
 
 exports.getAllEnquiries = async (req, res) => {
@@ -839,9 +1040,8 @@ exports.changeContentServiceStatus = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: `Content service ${
-                isActive ? "activated" : "deactivated"
-            } successfully`,
+            message: `Content service ${isActive ? "activated" : "deactivated"
+                } successfully`,
             service,
         });
     } catch (error) {
@@ -858,59 +1058,59 @@ exports.changeContentServiceStatus = async (req, res) => {
 
 
 exports.onboardMember = async (req, res) => {
-  try {
-    const {
-      businessName,
-      ownerName,
-      industry,
-      contactInfo,
-      gstOrPan,
-      city,
-      website,
-      email,
-      password
-    } = req.body;
+    try {
+        const {
+            businessName,
+            ownerName,
+            industry,
+            contactInfo,
+            gstOrPan,
+            city,
+            website,
+            email,
+            password
+        } = req.body;
 
-    if (!businessName || !ownerName || !industry || !contactInfo || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All required fields must be filled"
-      });
+        if (!businessName || !ownerName || !industry || !contactInfo || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "All required fields must be filled"
+            });
+        }
+
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({
+                success: false,
+                message: "Email already exists"
+            });
+        }
+
+        const user = await User.create({
+            businessName,
+            ownerName,
+            industry,
+            contactInfo,
+            gstOrPan,
+            city,
+            website,
+            email,
+            password,
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Member onboarded successfully",
+            user
+        });
+
+    } catch (err) {
+        console.error("Onboard error:", err);
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error"
+        });
     }
-
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already exists"
-      });
-    }
-
-    const user = await User.create({
-      businessName,
-      ownerName,
-      industry,
-      contactInfo,
-      gstOrPan,
-      city,
-      website,
-      email,
-      password,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Member onboarded successfully",
-      user
-    });
-
-  } catch (err) {
-    console.error("Onboard error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error"
-    });
-  }
 };
 
 
@@ -1127,9 +1327,8 @@ exports.assignMembershipToUser = async (req, res) => {
 
                         <tbody>
 
-                            ${
-                                benefitRows ||
-                                `
+                            ${benefitRows ||
+                `
                                 <tr>
                                     <td
                                         colspan="2"
@@ -1143,7 +1342,7 @@ exports.assignMembershipToUser = async (req, res) => {
                                     </td>
                                 </tr>
                                 `
-                            }
+                }
 
                         </tbody>
 
