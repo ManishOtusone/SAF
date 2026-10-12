@@ -60,6 +60,7 @@ const RequestedContents = () => {
                 <th className="border p-2">User Requirement</th>
 
                 <th className="border p-2">Request Date</th>
+                <th className="border p-2">Completed Date</th>
                 <th className="border p-2">Status</th>
                 <th className="border p-2">Action</th>
               </tr>
@@ -117,27 +118,46 @@ const RequestedContents = () => {
                       ).toLocaleDateString()}
                     </td>
 
+                    {/* Completed Date */}
+                    <td className="border p-2">
+                      {request.uploadedAt
+                        ? new Date(request.uploadedAt).toLocaleDateString("en-IN")
+                        : "—"}
+                    </td>
+
                     {/* Status */}
                     <td className="border p-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          request.status === "approved"
-                            ? "bg-green-100 text-green-700"
-                            : request.status === "rejected"
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${request.status === "approved"
+                          ? "bg-green-100 text-green-700"
+                          : request.status === "rejected"
                             ? "bg-red-100 text-red-700"
                             : "bg-yellow-100 text-yellow-700"
-                        }`}
+                          }`}
                       >
                         {request.status || "pending"}
                       </span>
                     </td>
 
                     {/* Action */}
+
+                    {/* Action */}
                     <td className="border p-2">
                       {request.status === "approved" ? (
-                        <span className="text-green-600 font-semibold">
-                          Completed
-                        </span>
+                        <button
+                          onClick={() =>
+                            setSelectedRequest({
+                              ...request,
+                              userId: item.user?._id,
+                              user: item.user,
+                              requestContentId: item._id,
+                              isEditing: true,
+                            })
+                          }
+                          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                        >
+                          Edit Content
+                        </button>
                       ) : (
                         <button
                           onClick={() =>
@@ -146,6 +166,7 @@ const RequestedContents = () => {
                               userId: item.user?._id,
                               user: item.user,
                               requestContentId: item._id,
+                              isEditing: false,
                             })
                           }
                           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
@@ -154,6 +175,7 @@ const RequestedContents = () => {
                         </button>
                       )}
                     </td>
+
                   </tr>
                 ))
               )}
